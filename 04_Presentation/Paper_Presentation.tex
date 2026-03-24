@@ -58,7 +58,7 @@
 
 % --- THEME SETUP ---
 \usetheme{Madrid}
-\usecolortheme{beaver} % Restores the Red theme
+\usecolortheme{beaver}
 
 % --- PACKAGES ---
 \usepackage[utf8]{inputenc}
@@ -71,60 +71,47 @@
 \usepackage[table]{xcolor}
 \usepackage{caption}
 
-% --- CUSTOM COLOR & FONT OVERRIDES (B) ---
-% 1. Define the specific red (Beaver default is usually dark red)
-\definecolor{beaverRed}{RGB}{140,45,45} 
-\definecolor{MainColour}{RGB}{0,72, 144} 
-\definecolor{grey}{RGB}{216,221,227} 
-\definecolor{darkgrey}{RGB}{149,153,158} 
+% --- CUSTOM COLOR & FONT OVERRIDES ---
+\definecolor{beaverRed}{RGB}{140,45,45}
+\definecolor{MainColour}{RGB}{0,72,144}
+\definecolor{grey}{RGB}{216,221,227}
+\definecolor{darkgrey}{RGB}{149,153,158}
 
-% 2. Force Titles to be White on Red
 \setbeamercolor{title}{bg=MainColour, fg=white}
 \setbeamercolor{frametitle}{bg=MainColour, fg=white}
-\setbeamercolor{subtitle}{fg=white} % Subtitle on title page
-
-% 3. Force Footer to be White on Red
-\setbeamercolor{date in head/foot}{bg=MainColour, fg=white} 
+\setbeamercolor{subtitle}{fg=white}
+\setbeamercolor{date in head/foot}{bg=MainColour, fg=white}
 \setbeamercolor{footline}{bg=MainColour, fg=white}
-
-%%%% Adjusts the text boxes (alterboxes) %%%%
 \setbeamercolor{block title alerted}{bg=MainColour, fg=white}
 \setbeamercolor{block body alerted}{bg=grey, fg=black}
 \setbeamercolor{block title}{bg=darkgrey, fg=white}
 \setbeamercolor{block body}{bg=grey, fg=black}
 
-%%%% Enable caption numbering.
 \setbeamertemplate{caption}[numbered]
 
-%%%% Customizes the footline / footnoes %%%%
 \setbeamertemplate{footline}{%
   \leavevmode%
   \hbox{%
-    % LEFT BOX: Date
     \begin{beamercolorbox}[wd=6.4cm,ht=2.25ex,dp=1ex,leftskip=0.5cm]{date in head/foot}%
       \usebeamerfont{date in head/foot}\insertdate
     \end{beamercolorbox}%
-    % RIGHT BOX: Page Number
-    % 1. REMOVED [right] option to stop it from forcing the text to the edge.
-    % 2. ADDED \hfill to push the number to the right side.
-    % 3. ADDED \hspace*{...} to create the gap.
     \begin{beamercolorbox}[wd=6.4cm,ht=2.25ex,dp=1ex]{date in head/foot}%
-      \usebeamerfont{date in head/foot}\hfill\insertframenumber\hspace*{0.75cm}% <--- Adjust this value
+      \usebeamerfont{date in head/foot}\hfill\insertframenumber\hspace*{0.75cm}
     \end{beamercolorbox}}%
   \vskip0pt%
 }
 
-% Remove default navigation symbols
 \setbeamertemplate{navigation symbols}{}
 
 % --- METADATA ---
-\title[Factor SV Models]{Efficient Bayesian Inference for Multivariate Factor Stochastic Volatility Models}
-\subtitle{\citet{Kastner2017}}
-\author{[Your Name]}
+\title[Factor SV Models]{Efficient Bayesian Inference for\\Multivariate Factor Stochastic Volatility Models}
+\subtitle{(Kastner et al. 2017)}
+\author{Leonid Kuzmishin \\
+        Tristan Leiter}
 \institute[WU]{Vienna University of Business and Economics \\
         \medskip
         \scriptsize Bayesian Econometrics -- Summer Term 2026}
-\date{[Presentation Date]}
+\date{26th of March, 2026}
 
 %==== Beginning of the document ===============================================%
 
@@ -148,230 +135,373 @@
 \section{Motivation}
 \begin{frame}{From Univariate to Multivariate Stochastic Volatility}
   \begin{itemize}
-    \setlength\itemsep{1em}
+    \setlength\itemsep{0.9em}
 
     \item \textbf{Recall Assignment Task 2:} We modelled daily CHF/USD returns
-    with a $t_\nu$-distributed error and latent weights $\omega_i$, giving each
-    observation its own effective variance $\sigma^2/\omega_i$ --- a
-    \emph{univariate} stochastic volatility model.
+    with $t_\nu$-errors and latent weights $\omega_i$, giving each observation
+    its own effective variance $\sigma^2/\omega_i$ --- a \emph{univariate}
+    stochastic volatility (SV) model.
 
     \item \textbf{Natural extension:} With $m$ assets we need not only
-    time-varying variances but also time-varying \emph{covariances}.
-    The full covariance matrix has $m(m+1)/2$ free elements --- growing
-    \textbf{quadratically} in $m$.
+    time-varying \emph{variances} but also time-varying \emph{covariances}.
+    The full covariance matrix has $\tfrac{m(m+1)}{2}$ free elements ---
+    growing \textbf{quadratically} in $m$.
 
-    \item \textbf{The curse of dimensionality:} For $m = 26$ exchange rates
-    this gives 351 covariance parameters \emph{per time point}. Direct
-    modelling becomes infeasible.
+    \item \textbf{The curse of dimensionality:} For $m=26$ exchange rates
+    this gives 351 covariance parameters \emph{per time point}.
+    Direct modelling is infeasible.
 
-    \item \textbf{Solution:} Impose a low-dimensional \textbf{factor structure}
-    that reduces the parameter count while retaining flexibility for volatility
-    clustering and co-movement.
+    \item \textbf{This paper's answer:} Impose a low-dimensional
+    \textbf{factor structure} ($r \ll m$ latent factors) and let \emph{each}
+    factor follow its own SV process --- parsimonious yet flexible.
 
   \end{itemize}
 \end{frame}
 
 %==== 02 - The Model ==========================================================%
 
-\section{The Model}
+\section{The Factor SV Model}
 
-%%% Slide 02A - Model Specification %%%
-\begin{frame}{The Factor SV Model: Specification}
+\begin{frame}{Building Block 1: The Factor SV Model}
 
-  For $t = 1, \ldots, T$ and $m$ observed returns $\mathbf{y}_t$ driven by
-  $r \ll m$ latent factors $\mathbf{f}_t$:
-
-  \begin{alertblock}{Observation \& Factor Equations}
-    \[
-      \mathbf{y}_t = \boldsymbol{\Lambda} \mathbf{f}_t + \boldsymbol{\varepsilon}_t,
-      \qquad
-      \mathbf{f}_t \mid \mathbf{h}_t \sim \mathcal{N}_r\!\left(\mathbf{0},\,
-      V_t(\mathbf{h}_t^V)\right)
-    \]
-    with $\boldsymbol{\varepsilon}_t \mid \mathbf{h}_t \sim
-    \mathcal{N}_m\!\left(\mathbf{0}, U_t(\mathbf{h}_t^U)\right)$
-  \end{alertblock}
-
-  \begin{itemize}
-    \setlength\itemsep{0.7em}
-    \item $\boldsymbol{\Lambda}$: unknown $m \times r$ \textbf{factor loadings} matrix
-    \item $U_t = \mathrm{diag}\!\left(e^{h_{1t}}, \ldots, e^{h_{mt}}\right)$:
-          \textbf{idiosyncratic} (series-specific) variances
-    \item $V_t = \mathrm{diag}\!\left(e^{h_{m+1,t}}, \ldots, e^{h_{m+r,t}}\right)$:
-          \textbf{factor} variances
-    \item Each log-variance follows an independent \textbf{AR(1)} process:
-          $h_{it} = \mu_i + \phi_i(h_{i,t-1} - \mu_i) + \sigma_i\eta_{it}$
-  \end{itemize}
-
-  \vspace{0.5em}
-
-  The time-varying conditional covariance matrix is:
-  \[
-    \mathrm{cov}(\mathbf{y}_t \mid \mathbf{h}_t)
-    = \boldsymbol{\Lambda} V_t \boldsymbol{\Lambda}^\prime + U_t
-  \]
-
-\end{frame}
-
-%%% Slide 02B - Identification %%%
-\begin{frame}{Identification}
-
-  \begin{itemize}
-    \setlength\itemsep{0.9em}
-
-    \item \textbf{Scaling ambiguity:} Multiplying column $j$ of
-    $\boldsymbol{\Lambda}$ by $c$ and dividing $f_{jt}$ by $c$ leaves
-    $\mathbf{y}_t$ unchanged --- the model is not identified without
-    additional constraints.
-
-    \item \textbf{Classical fix:} Set $\lambda_{jj} = 1$ and treat the
-    factor variance level as free.  This imposes a series ordering and creates
-    ``leading'' factors.
-
-    \item \textbf{Paper's approach:} Fix the level $\mu_{m+j} = 0$ for each
-    factor log-variance (i.e.\ factor variance averages to 1), while leaving
-    $\lambda_{jj}$ \emph{unrestricted}.
-
-    \item \textbf{Sign switching:} Each column of $\boldsymbol{\Lambda}$ is
-    identified only up to a sign flip --- resolved in post-processing.
-
-  \end{itemize}
-
-  \vspace{0.5em}
-
-  \begin{block}{Why it matters}
-    Unresolved non-identifiability causes MCMC chains to be multimodal
-    and essentially useless.  The paper deliberately \emph{exploits} the
-    non-identifiability as a computational tool (see ASIS, Section 4).
-  \end{block}
-
-\end{frame}
-
-%==== 03 - Bayesian Inference =================================================%
-
-\section{Bayesian Inference}
-
-%%% Slide 03A - Gibbs Sampler %%%
-\begin{frame}{Bayesian Inference: Gibbs Sampler}
-
-  \textbf{Data augmentation} with latent volatilities $\mathbf{h}$ and factors
-  $\mathbf{f}$ makes conditional posteriors tractable --- exactly as in the
-  $t$-model from Task 2.
-
-  \vspace{0.5em}
-
-  \begin{alertblock}{Algorithm 1 -- Standard Gibbs Sampler}
-    \begin{enumerate}
-      \setlength\itemsep{0.5em}
-      \item[\textbf{(a)}] \textbf{Univariate SV updates} ($m + r$ independent
-            problems): given $\mathbf{f}$ and $\boldsymbol{\Lambda}$, each
-            series/factor reduces to a univariate SV model via the
-            log-squared observation trick.  Use the \texttt{stochvol} R
-            package as a plug-in.
-      \item[\textbf{(b)}] \textbf{Sample loadings} $\boldsymbol{\Lambda}$:
-            conditional on $\mathbf{f}$ and $\mathbf{h}$, each row of
-            $\boldsymbol{\Lambda}$ is a standard normal regression posterior.
-      \item[\textbf{(c)}] \textbf{Sample factors} $\mathbf{f}_t$: conditional
-            on $\boldsymbol{\Lambda}$ and $\mathbf{h}$, each $\mathbf{f}_t$
-            is a multivariate normal posterior.
-    \end{enumerate}
-  \end{alertblock}
+  \textbf{Intuition:} Decompose $m$-dimensional returns into a
+  low-dimensional common component (factors) plus series-specific noise.
+  Both components have \emph{time-varying} volatility.
 
   \vspace{0.4em}
 
-  \textbf{Link to lecture (Week 2--3):} Steps (b) and (c) are identical in
-  structure to the conjugate Normal--Normal updates for $\mu$ and the
-  $\omega_i$ in Task 2.  Step (a) extends the MH step for $\nu$.
-
-\end{frame}
-
-%%% Slide 03B - Why Standard Gibbs Fails %%%
-\begin{frame}{Problem: Standard Gibbs Mixes Poorly}
+  \begin{alertblock}{Observation \& Factor Equations}
+    \[
+      \underbrace{\mathbf{y}_t}_{m \times 1}
+      = \underbrace{\boldsymbol{\Lambda}}_{m \times r}
+        \underbrace{\mathbf{f}_t}_{r \times 1}
+      + \underbrace{\boldsymbol{\varepsilon}_t}_{m \times 1},
+      \qquad
+      \mathbf{f}_t \mid \mathbf{h}_t \sim \mathcal{N}_r(\mathbf{0}, V_t),
+      \quad
+      \boldsymbol{\varepsilon}_t \mid \mathbf{h}_t \sim \mathcal{N}_m(\mathbf{0}, U_t)
+    \]
+  \end{alertblock}
 
   \begin{itemize}
-    \setlength\itemsep{0.9em}
-
-    \item The factor loadings $\boldsymbol{\Lambda}$ and the latent factors
-    $\mathbf{f}_t$ are \textbf{strongly correlated} in their joint posterior.
-    Updating them sequentially leaves the chain nearly stuck.
-
-    \item In simulation studies with $m=10$, $r=2$, $T=1000$: the standard
-    sampler yields \textbf{inefficiency factors (IFs) of 5000+} for some
-    datasets --- meaning you need 5000 MCMC draws to equal one independent
-    draw.
-
-    \item Even after 5 million iterations the chain may not have converged.
-
+    \setlength\itemsep{0.45em}
+    \item $\boldsymbol{\Lambda}$: $m \times r$ \textbf{factor loadings} ---
+          how much each asset responds to each factor
+    \item $U_t = \mathrm{diag}(e^{h_{1t}}, \ldots, e^{h_{mt}})$:
+          \textbf{idiosyncratic} time-varying variances
+    \item $V_t = \mathrm{diag}(e^{h_{m+1,t}}, \ldots, e^{h_{m+r,t}})$:
+          \textbf{factor} time-varying variances
+    \item Each log-variance follows an independent \textbf{AR(1)}:
+          $h_{it} = \mu_i + \phi_i(h_{i,t-1}-\mu_i) + \sigma_i\eta_{it}$
   \end{itemize}
 
-  \vspace{0.3em}
+  \vspace{0.2em}
 
-  \begin{block}{Inefficiency Factor (IF)}
-    Ratio of the MCMC numerical variance to the variance from i.i.d.\ draws.
-    An IF of $k$ means you need $k$ times as many MCMC draws to achieve the
-    same accuracy as independent sampling.  Estimated via integrated
-    autocorrelation time (\texttt{coda} package).
+  \begin{block}{Key quantity: time-varying covariance matrix}
+    \[
+      \mathrm{cov}(\mathbf{y}_t \mid \mathbf{h}_t)
+      \;=\; \boldsymbol{\Lambda} V_t \boldsymbol{\Lambda}^\prime + U_t
+    \]
+    % \textit{All co-movements are governed by the $r$ factors.
+    % Idiosyncratic shocks are uncorrelated across assets.}
   \end{block}
 
 \end{frame}
 
-%==== 04 - ASIS ==============================================================%
+%==== 03 - Identification =====================================================%
 
-\section{The ASIS Innovation}
-\begin{frame}{Ancillarity-Sufficiency Interweaving Strategy (ASIS)}
+\begin{frame}{Building Block 2: Identification}
 
-  \textbf{Key idea:} Two \emph{mathematically equivalent} parameterisations
-  are each efficient in different regions of the parameter space.
-  Switching between them at every iteration combines the best of both worlds
-  \citep{Yu2011}.
+  \textbf{Problem:} The factor model has a fund. \textbf{scaling ambiguity}.
+  For any scalar $c \neq 0$:
+  \[
+    \boldsymbol{\Lambda}\mathbf{f}_t
+    \;=\; \underbrace{(c\,\boldsymbol{\Lambda})}_{\boldsymbol{\Lambda}^*}
+          \underbrace{(c^{-1}\mathbf{f}_t)}_{\mathbf{f}_t^*}
+  \]
+  The data cannot distinguish $(\boldsymbol{\Lambda}, \mathbf{f}_t)$ from
+  $(c\boldsymbol{\Lambda}, c^{-1}\mathbf{f}_t)$ --- the model is
+  \textbf{not identified} without additional constraints.
 
-  \vspace{0.5em}
+  \vspace{0.05em}
 
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \begin{alertblock}{Shallow Interweaving}
+      \begin{block}{Classical fix}
+        Set $\lambda_{jj} = 1$ for each factor,
+        treat the factor variance level $\mu_{m+j}$ as free.
         \begin{itemize}
-          \item Transform to alternative param.\ where $\lambda_{jj} = 1$
-          \item Resample $\lambda_{jj}$ from a \textbf{Generalised Inverse
-                Gaussian} (GIG) posterior (conjugate)
-          \item Transform back
-          \item Affects $\boldsymbol{\Lambda}$ and $\mathbf{f}$ only
-          \item $\approx 2$--$8\times$ efficiency gain
+          \item[$+$] Simple to implement
+          \item[$-$] Imposes a series ordering
+          \item[$-$] Creates artificial ``leading'' factors
         \end{itemize}
-      \end{alertblock}
+      \end{block}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \begin{alertblock}{Deep Interweaving}
+      \begin{alertblock}{Paper's approach}
+        Fix $\mu_{m+j} = 0$ (factor variance averages
+        to 1 over time), leave $\lambda_{jj}$
+        \emph{unrestricted}.
         \begin{itemize}
-          \item Additionally shift log-volatility path: $h^*_{m+j,t} =
-                h_{m+j,t} + 2\log|\lambda_{jj}|$
-          \item Resample $\lambda_{jj}$ via
-                \textbf{independence MH} in this extended space
-          \item Affects $\boldsymbol{\Lambda}$, $\mathbf{f}$ \emph{and}
-                $\mathbf{h}$
-          \item Up to $\mathbf{400\times}$ efficiency gain
+          \item[$+$] No ordering imposed
+          \item[$+$] Leadership shared across series
+          \item[$+$] Residual ambiguity in $\lambda_{jj}$
+                becomes a \textbf{computational tool}
         \end{itemize}
       \end{alertblock}
     \end{column}
   \end{columns}
 
-  \vspace{0.5em}
+  % \vspace{0.1em}
 
-  \textbf{No tuning required:} The method is fully automatic --- no user
-  adjustment of proposal variances (contrast with the $c_\nu$ tuning in
-  Task 2).
+  \begin{block}{Why this matters for MCMC}
+    Unresolved non-identifiability $\Rightarrow$ multimodal posterior
+    $\Rightarrow$ MCMC chains get stuck.
+  \end{block}
 
 \end{frame}
 
-%==== 05 - Simulation =========================================================%
+%==== 04 - Priors & Data Augmentation =========================================%
 
-\section{Simulation Evidence}
-\begin{frame}{Simulation Evidence}
+\section{Bayesian Inference}
 
-  Setup: $m=10$ series, $r=2$ factors, $T=1000$ observations, 100 replications,
-  5.1 million draws per run.
+\begin{frame}{Building Block 3: Priors \& Data Augmentation}
+
+  \textbf{Priors} (independently for each SV process $i = 1,\ldots,m+r$):
+  \[
+    \mu_i \sim \mathcal{N}(b_\mu, B_\mu), \qquad
+    \frac{\phi_i+1}{2} \sim \mathcal{B}(a_0,b_0), \qquad
+    \sigma_i^2 \sim B_\sigma \cdot \chi^2_1
+  \]
+  For each unrestricted element of $\boldsymbol{\Lambda}$:
+  $\lambda_{ij} \sim \mathcal{N}(0, B_\lambda)$
+  \hfill \textit{(Ridge-type shrinkage of small loadings)}
 
   \vspace{0.5em}
+
+  \textbf{Data augmentation:} Introduce latent variables
+  $\mathbf{h} = \{h_{i,\bullet}\}$ (log-volatility paths) and
+  $\mathbf{f} = \{\mathbf{f}_{t}\}$ (factor paths) as ``missing data''.
+
+  \vspace{0.3em}
+
+  \begin{alertblock}{Why augmentation helps --- the key idea}
+    \begin{itemize}
+      \setlength\itemsep{0.4em}
+      \item \textbf{Conditional on $\mathbf{f}$ and $\boldsymbol{\Lambda}$:}
+            each of the $m+r$ series reduces to an independent
+            \textbf{univariate SV model} $\Rightarrow$ use \texttt{stochvol}.
+      \item \textbf{Conditional on $\mathbf{h}$:}
+            $\boldsymbol{\Lambda}$ and $\mathbf{f}_t$ have
+            \textbf{closed-form Normal posteriors}
+            $\Rightarrow$ standard regression updates.
+    \end{itemize}
+    \vspace{0.2em}
+    \textit{Direct parallel to Task~2: augmenting with $\omega_i$ turned an
+    intractable $t$-likelihood into a conjugate Normal--Gamma system.}
+  \end{alertblock}
+
+\end{frame}
+
+%==== 05 - Standard Gibbs =====================================================%
+
+\begin{frame}{Building Block 4: The Standard Gibbs Sampler}
+
+  Iterate the following three steps \citep[Algorithm~1]{Kastner2017}:
+
+  \vspace{0.3em}
+
+  \begin{alertblock}{Step (a) --- Univariate SV updates ($m+r$ independent problems)}
+    Conditional on $\mathbf{f}$ and $\boldsymbol{\Lambda}$, use the
+    log-squared observation trick to write each series as a linear
+    state-space model and update $(h_{i,\bullet}, \mu_i, \phi_i, \sigma_i)$
+    via \texttt{stochvol}.
+  \end{alertblock}
+
+  \begin{alertblock}{Step (b) --- Sample loadings $\boldsymbol{\Lambda}$}
+    Conditional on $\mathbf{f}$ and $\mathbf{h}$, each row of
+    $\boldsymbol{\Lambda}$ is a \textbf{weighted Normal regression} posterior
+    --- $m$ independent problems, each with $T$ observations,
+    weighted by $e^{-h_{it}}$.
+  \end{alertblock}
+
+  \begin{alertblock}{Step (c) --- Sample factors $\mathbf{f}_t$}
+    Conditional on $\boldsymbol{\Lambda}$ and $\mathbf{h}$, each
+    $\mathbf{f}_t$ is a \textbf{multivariate Normal} posterior ---
+    $T$ independent $r$-dimensional updates.
+  \end{alertblock}
+
+  \vspace{0.3em}
+
+  \textbf{In principle correct --- in practice broken.}  See next slide.
+
+\end{frame}
+
+%==== 06 - Why Gibbs Fails ====================================================%
+
+\begin{frame}{The Problem: Standard Gibbs Mixes Poorly}
+
+  \begin{itemize}
+    \setlength\itemsep{0.7em}
+
+    \item \textbf{Root cause:} $\boldsymbol{\Lambda}$ and $\mathbf{f}_t$
+    are \textbf{strongly correlated} in the joint posterior.
+    If $\lambda_{jj}$ is large, the factors $f_{jt}$ must be small to keep
+    $\Lambda f_t$ constant, and vice versa.
+    Sequential updates cannot break this ridge-shaped dependence.
+
+    \item \textbf{Consequence:} The chain inch-worms along a narrow ridge
+    rather than freely exploring the parameter space.
+
+    \item \textbf{Simulation evidence} ($m=10$, $r=2$, $T=1000$, 100 datasets):
+    \textbf{IF for $\lambda_{11}$ exceeds 5000} on some datasets even after
+    5 million iterations --- an effective sample size of only $\sim$1000
+    from 5 million draws.
+
+  \end{itemize}
+
+  \vspace{0.2em}
+
+  \begin{block}{Inefficiency Factor (IF) --- reminder}
+    $\mathrm{IF} = k$ means you need $k$ correlated MCMC draws to match the
+    accuracy of \emph{one} independent draw.
+    \\[0.3em]
+    \textit{IF = 5000 with $M=100{,}000$ draws $\Rightarrow$
+    effective sample size of just 20.  Practically useless for inference.}
+  \end{block}
+
+\end{frame}
+
+%==== 07 - ASIS Key Idea ======================================================%
+
+\section{The ASIS Innovation}
+\label{sec:asis}
+
+\begin{frame}{The ASIS Key Idea}
+
+  \textbf{Core insight \citep{Yu2011}:} Two \emph{mathematically equivalent}
+  parameterisations are often each efficient in \emph{different} regions of
+  the param. space.  \textbf{Switching between them at every iteration}
+  combines the best of both worlds.
+
+  \vspace{0.1em}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Baseline param.}
+        \[
+          \mathbf{y}_t = \boldsymbol{\Lambda}\mathbf{f}_t
+          + \boldsymbol{\varepsilon}_t
+        \]
+        $\lambda_{jj}$ \textbf{free}, $\mu_{m+j}=0$ fixed\\[0.3em]
+        Factor variance fixed at scale 1 on average.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Alternative param.}
+        \[
+          \mathbf{y}_t = \boldsymbol{\Lambda}^*\mathbf{f}_t^*
+          + \boldsymbol{\varepsilon}_t
+        \]
+        $\lambda^*_{jj}=1$ \textbf{fixed}, $\mu_{m+j}$ free\\[0.3em]
+        Scaling absorbed into the SV level.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.1em}
+
+  \textbf{The link} (a simple change of variables):
+  \[
+    \mathbf{f}_t^* = \lambda_{jj}\,\mathbf{f}_t,
+    \qquad
+    \boldsymbol{\Lambda}^* = \lambda_{jj}^{-1}\boldsymbol{\Lambda}
+  \]
+
+  \vspace{0.1em}
+
+  \begin{alertblock}{ASIS in one sentence}
+    After each standard Gibbs step, transform to the alternative
+    parameterisation, \textbf{resample $\lambda_{jj}$} there (where the
+    posterior is better-behaved), then transform back.\\
+    No extra model fitting --- just a change of coordinates at each step.
+  \end{alertblock}
+
+\end{frame}
+
+%==== 08 - Shallow & Deep =====================================================%
+
+\begin{frame}{Shallow vs.\ Deep Interweaving}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Shallow interweaving}
+        \textbf{Transform:}
+        $\mathbf{f}_t^* = \lambda_{jj}\mathbf{f}_t$
+
+        \vspace{0.1em}
+        \textbf{Resample} $\lambda_{jj}^2$ from a conjugate
+        \textbf{GIG} posterior (see Appendix~A1):
+        \[
+          \lambda_{jj}^2 \mid \cdot \;\sim\;
+          \mathrm{GIG}(p,\,a,\,b)
+        \]
+
+        \vspace{0.1em}
+        \textbf{Transform back:}
+        $\mathbf{f}_t = (\lambda_{jj}^{\mathrm{new}})^{-1}\mathbf{f}_t^*$
+
+        \vspace{0.1em}
+        \textbf{Scope:} $\boldsymbol{\Lambda}$ and $\mathbf{f}$ only.
+
+        \vspace{0.3em}
+        \textbf{Gain:} $\approx 2$--$8\times$
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Deep interweaving}
+        \textbf{Transform:} additionally shift the
+        log-volatility path (see Appendix~A2):
+        \[
+          h^*_{m+j,t} = h_{m+j,t} + 2\log|\lambda_{jj}|
+        \]
+        Now $\mu_{m+j} = \log\lambda_{jj}^2$ is free.
+
+        \vspace{0.3em}
+        \textbf{Resample} $\lambda_{jj}$ via
+        \textbf{independence MH} using a Gaussian
+        approximation to the conditional likelihood.
+
+        \vspace{0.3em}
+        \textbf{Scope:} $\boldsymbol{\Lambda}$, $\mathbf{f}$
+        \emph{and} $\mathbf{h}$.
+
+        \vspace{0.3em}
+        \textbf{Gain:} up to $\mathbf{400\times}$
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.2em}
+
+  \begin{block}{Why deep beats shallow}
+    Shallow leaves the log-volatility path $h_{m+j,\bullet}$ frozen,
+    so the slow mixing between $\lambda_{jj}$ and $h_{m+j,\bullet}$
+    persists.  Deep interweaving breaks \emph{both} dependencies
+    simultaneously.  \textbf{Neither strategy requires tuning.}
+  \end{block}
+
+\end{frame}
+
+%==== 09 - Simulation =========================================================%
+
+\section{Simulation Evidence}
+
+\begin{frame}{Simulation Evidence}
+
+  Setup: $m=10$, $r=2$, $T=1000$, 100 replications, 5.1M draws each.
+
+  \vspace{0.3em}
 
   \begin{table}[!h]
     \centering
@@ -380,121 +510,270 @@
       \toprule
       & \textbf{No interweaving} & \textbf{Shallow} & \textbf{Deep} \\
       \midrule
-      \cellcolor{gray!10}{$\lambda_{11}$ (average IF)}
-        & \cellcolor{gray!10}{$>1000$} & \cellcolor{gray!10}{$\approx 200$}
+      \cellcolor{gray!10}{$\lambda_{11}$ (avg.\ IF)}
+        & \cellcolor{gray!10}{$>1000$}
+        & \cellcolor{gray!10}{$\approx 200$}
         & \cellcolor{gray!10}{$\approx 5$} \\
-      Median IF across $\boldsymbol{\Lambda}$ & $\sim$400--5000 & $\sim$50--400 & $\sim$3--20 \\
-      \cellcolor{gray!10}{Efficiency gain vs.\ no interweaving}
-        & \cellcolor{gray!10}{---} & \cellcolor{gray!10}{$2$--$8\times$}
+      Median IF across $\boldsymbol{\Lambda}$
+        & $\sim$400--5000 & $\sim$50--400 & $\sim$3--20 \\
+      \cellcolor{gray!10}{Efficiency gain}
+        & \cellcolor{gray!10}{---}
+        & \cellcolor{gray!10}{$2$--$8\times$}
         & \cellcolor{gray!10}{up to $\mathbf{400\times}$} \\
       Factor $f_{1,T}$ (IF) & high & moderate & low \\
       \cellcolor{gray!10}{Factor log-var $h_{m+1,T}$ (IF)}
-        & \cellcolor{gray!10}{high} & \cellcolor{gray!10}{high}
+        & \cellcolor{gray!10}{high}
+        & \cellcolor{gray!10}{high}
         & \cellcolor{gray!10}{substantially reduced} \\
       \bottomrule
-      \multicolumn{4}{l}{\scriptsize Source: Tables 1--2 of \citet{Kastner2017}.
-      IFs estimated via \texttt{coda}.}
+      \multicolumn{4}{l}{\scriptsize Source: Tables~1--2, (Kastner et al. 2017).}
     \end{tabular}
     \captionsetup{font=tiny}
-    \caption{Average inefficiency factors for the factor loadings matrix.}
+    \caption{Average inefficiency factors for $\boldsymbol{\Lambda}$.}
   \end{table}
+
+  \begin{itemize}
+    \setlength\itemsep{0.3em}
+    \item Trace plots: deep interweaving $\Rightarrow$ \textbf{immediate mixing};
+    standard sampler barely moves (Figure~1 of paper).
+    \item IFs for standard sampler vary enormously (100--5000+) across datasets;
+    deep interweaving reduces this \textbf{uniformly} to single digits.
+    \item Log predictive Bayes factors (cf.\ Week~3) correctly recover $r=2$.
+  \end{itemize}
+
+\end{frame}
+
+%==== 10 - Application ========================================================%
+
+\section{Application: Exchange Rates}
+
+\begin{frame}{Application: 26 EUR Exchange Rates (2005--2015)}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \textbf{Setup:}
+      \begin{itemize}
+        \setlength\itemsep{0.35em}
+        \item $m=26$ daily EUR rates, $T=2649$ log-returns
+        \item $r=4$ factors selected via log predictive Bayes factors
+        \item 500{,}000 post-burn-in draws
+        \item Data used \emph{as-is}: includes CHF spike (Jan.\ 2015)
+              and RUB collapse (Dec.\ 2014)
+      \end{itemize}
+
+      \vspace{0.1em}
+      \textbf{Interpretable factors:}
+      \begin{itemize}
+        \setlength\itemsep{0.3em}
+        \item \textbf{F1:} Global USD/CNY factor
+        \item \textbf{F2:} Eastern Europe
+              (ZAR, HUF, PLN; JPY \emph{negative})
+        \item \textbf{F3:} Commodity currencies (AUD, NZD, CAD)
+        \item \textbf{F4:} Tiger Cub economies (SGD)
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \textbf{Key findings:}
+      \begin{itemize}
+        \setlength\itemsep{0.4em}
+        \item Factor volatilities spike around the
+              \textbf{2008 crisis} and again in 2014--15
+        \item CNY, HKD: near-perfect correlation with USD throughout
+        \item RUB--USD correlation fell from $\approx 0.9$ to
+              $\approx 0.4$ during 2008--09
+        \item \textbf{Idiosyncratic SV} absorbs CHF and RUB outliers
+              without distorting the factor structure ---
+              analogous to how $\omega_i$ absorbed outliers in Task~2
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+%==== 11 - Takeaways ==========================================================%
+
+\section{Takeaways \& Outlook}
+
+\begin{frame}{Takeaways \& Practical Outlook}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Connections to the lecture:}
+      \begin{itemize}
+        \setlength\itemsep{0.45em}
+        \item \textbf{Data augmentation (Wk.~2--3):}
+              Factor SV Gibbs is a direct generalisation
+              of the $\omega_i$ augmentation in Task~2
+        \item \textbf{Model selection (Wk.~3):}
+              Bayes factors select $r$ ---
+              same framework as lecture
+        \item \textbf{Shrinkage (Wk.~3):}
+              Gaussian prior on $\boldsymbol{\Lambda}$
+              acts as Ridge penalty
+        \item \textbf{Key lesson:} A correct model with a
+              poorly mixing sampler is useless;
+              ASIS is a general remedy beyond this model
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Practical applications:}
+      \begin{itemize}
+        \setlength\itemsep{0.45em}
+        \item \textbf{Portfolio optimisation:}
+              Replace sample covariance with posterior mean
+              of $\Sigma_t$; integrate out estimation
+              uncertainty via posterior draws for more
+              stable Markowitz weights
+        \item \textbf{Risk management:}
+              Full predictive distribution of $\mathbf{y}_{T+1}$
+              $\Rightarrow$ exact Bayesian VaR/ES without
+              Gaussian assumptions
+        \item \textbf{Correlation trading:}
+              Time-varying posterior correlations with
+              uncertainty bands signal when stable
+              relationships are breaking down
+        \item \texttt{factorstochvol}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+%==== 12 - Bibliography =======================================================%
+
+\section*{Bibliography}
+\begin{frame}{Bibliography}
+  \bibliographystyle{plainnat}
+  \bibliography{references}
+\end{frame}
+
+%==== APPENDIX ================================================================%
+
+\appendix
+
+\begin{frame}
+  \begin{center}
+    \Large\textbf{Appendix}\\[0.5em]
+    \normalsize Derivations \& Extensions
+  \end{center}
+\end{frame}
+
+%==== A1 - GIG Derivation =====================================================%
+
+\begin{frame}{A1: Why the GIG Posterior in Shallow Interweaving}
+
+  \textbf{Goal:} derive $p(\lambda_{jj}^2 \mid \mathbf{f}^*, \boldsymbol{\Lambda}^*, \mathbf{h})$.
+  Let $\psi = \lambda_{jj}^2$.  Three components contribute:
 
   \vspace{0.3em}
 
-  \begin{itemize}
-    \item Deep interweaving trace plots show \textbf{immediate mixing}; the
-    standard sampler barely moves even after millions of draws (Figure 1 of
-    the paper).
-    \item Log predictive Bayes factors (cf.\ Week 3) correctly identify $r=2$
-    as the true number of factors.
-  \end{itemize}
+  \textbf{(1) Likelihood from the scaled factors}
+  $f_{jt}^* \mid h_{m+j,t}, \psi \sim \mathcal{N}(0, \psi\, e^{h_{m+j,t}})$:
+  \[
+    p(\mathbf{f}_j^* \mid \mathbf{h}, \psi)
+    \;\propto\; \psi^{-T/2}
+    \exp\!\left(-\frac{1}{2\psi}\sum_t \frac{(f_{jt}^*)^2}{e^{h_{m+j,t}}}\right)
+  \]
+
+  \textbf{(2) Induced prior on transformed loadings}
+  $\lambda^*_{ij} \mid \psi \sim \mathcal{N}(0, B_\lambda/\psi)$:
+  \[
+    p(\boldsymbol{\lambda}^*_{-jj} \mid \psi)
+    \;\propto\; \psi^{k_j/2}
+    \exp\!\left(-\frac{\psi}{2B_\lambda}\|\boldsymbol{\lambda}^*_{-jj}\|^2\right)
+  \]
+
+  \textbf{(3) Prior} $\psi \sim \mathcal{G}(1/2,\, 1/(2B_\lambda))$:
+  $\;\propto\; \psi^{-1/2} e^{-\psi/(2B_\lambda)}$
+
+  \vspace{0.3em}
+
+  \textbf{Combining all three} gives a kernel of the form
+  $\psi^{p-1}\exp\{-(a\psi + b/\psi)/2\}$, which is the
+  \textbf{Generalised Inverse Gaussian} $\mathrm{GIG}(p,a,b)$ with:
+  \[
+    p = \tfrac{1+k_j-T}{2}, \quad
+    a = \tfrac{1}{B_\lambda}\bigl(1+\|\boldsymbol{\lambda}^*_{-jj}\|^2\bigr), \quad
+    b = \sum_t \tfrac{(f_{jt}^*)^2}{e^{h_{m+j,t}}}
+  \]
+  Sampled efficiently via the \texttt{GIGrvg} R package.
 
 \end{frame}
 
-%==== 06 - Application ========================================================%
+%==== A2 - Deep Interweaving Derivation =======================================%
 
-\section{Exchange Rate Application}
-\begin{frame}{Application: 26 EUR Exchange Rates (2005--2015)}
+\begin{frame}{A2: The Log-Volatility Shift in Deep Interweaving}
 
-  \begin{itemize}
-    \setlength\itemsep{0.7em}
+  \textbf{Starting point:} In the baseline param., $\mathrm{Var}(f_{jt}) = e^{h_{m+j,t}}$
+  with $\mu_{m+j}=0$ fixed.
 
-    \item \textbf{Data:} $m=26$ daily EUR exchange rates, $T=2649$ log-returns
-    (demeaned).  Includes outlier episodes: CHF spike Jan.\ 2015, RUB
-    collapse Dec.\ 2014.
+  \vspace{0.3em}
 
-    \item \textbf{Model choice:} $r=4$ factors selected via log predictive
-    Bayes factors (Week 3, slide 8).  500\,000 post-burn-in draws.
+  \textbf{Step 1 --- absorb $\lambda_{jj}$ into the SV level.}
+  The scaled factor $f_{jt}^* = \lambda_{jj} f_{jt}$ has variance:
+  \[
+    \mathrm{Var}(f_{jt}^*)
+    = \lambda_{jj}^2\, e^{h_{m+j,t}}
+    = \exp\!\bigl(\underbrace{\log\lambda_{jj}^2 + h_{m+j,t}}_{=:\, h^*_{m+j,t}}\bigr)
+  \]
+  So the transformed log-variance is $h^*_{m+j,t} = h_{m+j,t} + 2\log|\lambda_{jj}|$,
+  and the level of the new AR(1) process is $\mu_{m+j} = \log\lambda_{jj}^2$.
 
-    \item \textbf{Interpretable factors:}
-    \begin{itemize}
-      \item \textbf{Factor 1:} USD/CNY-driven global dollar factor
-      (USD, CNY, HKD load highly)
-      \item \textbf{Factor 2:} Eastern European / EM currencies
-      (ZAR, HUF, PLN, TRY; JPY loads \emph{negatively})
-      \item \textbf{Factor 3:} Commodity currencies (AUD, NZD, CAD, ZAR)
-      \item \textbf{Factor 4:} Tiger Cub economies (MYR, KRW, PHP, SGD)
-    \end{itemize}
+  \vspace{0.3em}
 
-    \item \textbf{Time-varying correlations:} CNY and HKD nearly perfectly
-    correlated with USD throughout; RUB--USD correlation fell from $\approx
-    0.9$ to $\approx 0.4$ during 2008--2009.
+  \textbf{Step 2 --- resample the level.}
+  The conditional likelihood
+  $p(h^*_{m+j,1},\ldots,h^*_{m+j,T} \mid \mu_{m+j}, \phi, \sigma^2)$
+  is Gaussian in $\mu_{m+j}$, so a tight \textbf{independence MH} proposal
+  is constructed analytically (matching mean and variance of this likelihood).
 
-    \item \textbf{Robustness:} Idiosyncratic SV components absorb outliers
-    (CHF, RUB) without distorting the factor structure --- analogous to how
-    $\omega_i$ absorbed outliers in Task 2.
+  \vspace{0.3em}
 
-  \end{itemize}
+  \textbf{Step 3 --- transform back.}
+  Given $\mu_{m+j}^{\mathrm{new}}$, set
+  $\lambda_{jj}^{\mathrm{new}} = e^{\mu_{m+j}^{\mathrm{new}}/2}$ and recover:
+  \[
+    h_{m+j,t}^{\mathrm{new}}
+    = h^*_{m+j,t} - 2\log|\lambda_{jj}^{\mathrm{new}}|,
+    \qquad
+    \boldsymbol{\Lambda}^{\mathrm{new}} = \frac{\lambda_{jj}^{\mathrm{new}}}{\lambda_{jj}^{\mathrm{old}}}\boldsymbol{\Lambda}^{\mathrm{old}}
+  \]
 
 \end{frame}
 
-%==== 07 - Takeaways ==========================================================%
+%==== A3 - Thesis Connection ==================================================%
 
-\section{Takeaways \& Practical Relevance}
-\begin{frame}{Takeaways \& Practical Relevance}
+\begin{frame}{A3: Connection to Thesis --- Crash-Filtered Equity Index}
 
-  \textbf{Theoretical connections to the lecture:}
+  \textbf{Thesis goal \citep{Tewari2024}:} Predict \textbf{Catastrophic Stock
+  Implosion (CSI)} events ($>80\%$ drawdown + zombie period) and construct a
+  crash-filtered index with superior risk-adjusted returns.
+
+  \vspace{0.3em}
+
+  \textbf{Where the factor SV model fits:}
 
   \begin{itemize}
     \setlength\itemsep{0.6em}
 
-    \item \textbf{Data augmentation (Week 2--3):} The factor SV Gibbs sampler
-    is a direct generalisation of the $\omega_i$-augmented sampler in Task 2.
-    Both make conditionally intractable models tractable.
+    \item \textbf{Feature engineering for CSI prediction:}
+    The idiosyncratic log-variance $h_{it}$ and factor log-variances
+    $h_{m+j,t}$ are natural inputs to the ensemble classifiers (RF, XGBoost).
+    A firm whose \emph{idiosyncratic} SV is elevated and detaches from the
+    common factors is a candidate for implosion --- this is precisely what
+    $U_t$ captures, separately from $\Lambda V_t \Lambda^\prime$.
 
-    \item \textbf{Model selection (Week 3):} Log predictive Bayes factors
-    (Kass--Raftery scale) are used to select $r$ --- identical framework to
-    the marginal likelihood comparisons in the lecture.
+    \item \textbf{Dynamic covariance in the optimiser:}
+    After filtering CSI candidates, the posterior mean of $\Sigma_t$
+    replaces the sample covariance in the Markowitz step at each annual
+    rebalancing --- more stable and current than backward-looking estimates.
 
-    \item \textbf{Shrinkage (Week 3):} The Gaussian prior on $\boldsymbol{\Lambda}$
-    acts as a Ridge penalty, regularising small loadings and preventing
-    spurious factors.
+    \item \textbf{Uncertainty-aware threshold:}
+    The posterior distribution of $\Sigma_t$ can propagate estimation
+    uncertainty into the FPR constraint, making the exclusion threshold
+    $\theta$ \emph{data-adaptive} rather than fixed.
 
   \end{itemize}
-
-  \vspace{0.5em}
-
-  \textbf{Practical use:}
-
-  \begin{itemize}
-    \setlength\itemsep{0.4em}
-    \item The \texttt{factorstochvol} R package implements the full algorithm.
-    \item Deep interweaving adds negligible computational cost but yields
-    orders-of-magnitude better mixing --- always prefer it.
-    \item Even a correctly specified Gibbs sampler can be
-    \textbf{practically useless} without good mixing.  ASIS is a general
-    remedy applicable beyond this specific model.
-  \end{itemize}
-
-\end{frame}
-
-%==== 08 - Bibliography =======================================================%
-
-\section*{Bibliography}
-\begin{frame}{Bibliography}
-
-\bibliographystyle{plainnat}
-\bibliography{references}
 
 \end{frame}
 
