@@ -1,0 +1,503 @@
+%==== KNITR ===================================================================%
+
+
+
+%==== START ===================================================================%
+
+\documentclass[10pt]{beamer}\usepackage[]{graphicx}\usepackage[table]{xcolor}
+% maxwidth is the original width if it is less than linewidth
+% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlsng}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hldef}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+
+% --- THEME SETUP ---
+\usetheme{Madrid}
+\usecolortheme{beaver} % Restores the Red theme
+
+% --- PACKAGES ---
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+\setcitestyle{authoryear,open={(},close={)}}
+\usepackage[table]{xcolor}
+\usepackage{caption}
+
+% --- CUSTOM COLOR & FONT OVERRIDES (B) ---
+% 1. Define the specific red (Beaver default is usually dark red)
+\definecolor{beaverRed}{RGB}{140,45,45} 
+\definecolor{MainColour}{RGB}{0,72, 144} 
+\definecolor{grey}{RGB}{216,221,227} 
+\definecolor{darkgrey}{RGB}{149,153,158} 
+
+% 2. Force Titles to be White on Red
+\setbeamercolor{title}{bg=MainColour, fg=white}
+\setbeamercolor{frametitle}{bg=MainColour, fg=white}
+\setbeamercolor{subtitle}{fg=white} % Subtitle on title page
+
+% 3. Force Footer to be White on Red
+\setbeamercolor{date in head/foot}{bg=MainColour, fg=white} 
+\setbeamercolor{footline}{bg=MainColour, fg=white}
+
+%%%% Adjusts the text boxes (alterboxes) %%%%
+\setbeamercolor{block title alerted}{bg=MainColour, fg=white}
+\setbeamercolor{block body alerted}{bg=grey, fg=black}
+\setbeamercolor{block title}{bg=darkgrey, fg=white}
+\setbeamercolor{block body}{bg=grey, fg=black}
+
+%%%% Enable caption numbering.
+\setbeamertemplate{caption}[numbered]
+
+%%%% Customizes the footline / footnoes %%%%
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    % LEFT BOX: Date
+    \begin{beamercolorbox}[wd=6.4cm,ht=2.25ex,dp=1ex,leftskip=0.5cm]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertdate
+    \end{beamercolorbox}%
+    % RIGHT BOX: Page Number
+    % 1. REMOVED [right] option to stop it from forcing the text to the edge.
+    % 2. ADDED \hfill to push the number to the right side.
+    % 3. ADDED \hspace*{...} to create the gap.
+    \begin{beamercolorbox}[wd=6.4cm,ht=2.25ex,dp=1ex]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\hfill\insertframenumber\hspace*{0.75cm}% <--- Adjust this value
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% Remove default navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% --- METADATA ---
+\title[Factor SV Models]{Efficient Bayesian Inference for Multivariate Factor Stochastic Volatility Models}
+\subtitle{\citet{Kastner2017}}
+\author{[Your Name]}
+\institute[WU]{Vienna University of Business and Economics \\
+        \medskip
+        \scriptsize Bayesian Econometrics -- Summer Term 2026}
+\date{[Presentation Date]}
+
+%==== Beginning of the document ===============================================%
+
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+%==== Title Page ==============================================================%
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%==== Outline =================================================================%
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+%==== 01 - Motivation =========================================================%
+
+\section{Motivation}
+\begin{frame}{From Univariate to Multivariate Stochastic Volatility}
+  \begin{itemize}
+    \setlength\itemsep{1em}
+
+    \item \textbf{Recall Assignment Task 2:} We modelled daily CHF/USD returns
+    with a $t_\nu$-distributed error and latent weights $\omega_i$, giving each
+    observation its own effective variance $\sigma^2/\omega_i$ --- a
+    \emph{univariate} stochastic volatility model.
+
+    \item \textbf{Natural extension:} With $m$ assets we need not only
+    time-varying variances but also time-varying \emph{covariances}.
+    The full covariance matrix has $m(m+1)/2$ free elements --- growing
+    \textbf{quadratically} in $m$.
+
+    \item \textbf{The curse of dimensionality:} For $m = 26$ exchange rates
+    this gives 351 covariance parameters \emph{per time point}. Direct
+    modelling becomes infeasible.
+
+    \item \textbf{Solution:} Impose a low-dimensional \textbf{factor structure}
+    that reduces the parameter count while retaining flexibility for volatility
+    clustering and co-movement.
+
+  \end{itemize}
+\end{frame}
+
+%==== 02 - The Model ==========================================================%
+
+\section{The Model}
+
+%%% Slide 02A - Model Specification %%%
+\begin{frame}{The Factor SV Model: Specification}
+
+  For $t = 1, \ldots, T$ and $m$ observed returns $\mathbf{y}_t$ driven by
+  $r \ll m$ latent factors $\mathbf{f}_t$:
+
+  \begin{alertblock}{Observation \& Factor Equations}
+    \[
+      \mathbf{y}_t = \boldsymbol{\Lambda} \mathbf{f}_t + \boldsymbol{\varepsilon}_t,
+      \qquad
+      \mathbf{f}_t \mid \mathbf{h}_t \sim \mathcal{N}_r\!\left(\mathbf{0},\,
+      V_t(\mathbf{h}_t^V)\right)
+    \]
+    with $\boldsymbol{\varepsilon}_t \mid \mathbf{h}_t \sim
+    \mathcal{N}_m\!\left(\mathbf{0}, U_t(\mathbf{h}_t^U)\right)$
+  \end{alertblock}
+
+  \begin{itemize}
+    \setlength\itemsep{0.7em}
+    \item $\boldsymbol{\Lambda}$: unknown $m \times r$ \textbf{factor loadings} matrix
+    \item $U_t = \mathrm{diag}\!\left(e^{h_{1t}}, \ldots, e^{h_{mt}}\right)$:
+          \textbf{idiosyncratic} (series-specific) variances
+    \item $V_t = \mathrm{diag}\!\left(e^{h_{m+1,t}}, \ldots, e^{h_{m+r,t}}\right)$:
+          \textbf{factor} variances
+    \item Each log-variance follows an independent \textbf{AR(1)} process:
+          $h_{it} = \mu_i + \phi_i(h_{i,t-1} - \mu_i) + \sigma_i\eta_{it}$
+  \end{itemize}
+
+  \vspace{0.5em}
+
+  The time-varying conditional covariance matrix is:
+  \[
+    \mathrm{cov}(\mathbf{y}_t \mid \mathbf{h}_t)
+    = \boldsymbol{\Lambda} V_t \boldsymbol{\Lambda}^\prime + U_t
+  \]
+
+\end{frame}
+
+%%% Slide 02B - Identification %%%
+\begin{frame}{Identification}
+
+  \begin{itemize}
+    \setlength\itemsep{0.9em}
+
+    \item \textbf{Scaling ambiguity:} Multiplying column $j$ of
+    $\boldsymbol{\Lambda}$ by $c$ and dividing $f_{jt}$ by $c$ leaves
+    $\mathbf{y}_t$ unchanged --- the model is not identified without
+    additional constraints.
+
+    \item \textbf{Classical fix:} Set $\lambda_{jj} = 1$ and treat the
+    factor variance level as free.  This imposes a series ordering and creates
+    ``leading'' factors.
+
+    \item \textbf{Paper's approach:} Fix the level $\mu_{m+j} = 0$ for each
+    factor log-variance (i.e.\ factor variance averages to 1), while leaving
+    $\lambda_{jj}$ \emph{unrestricted}.
+
+    \item \textbf{Sign switching:} Each column of $\boldsymbol{\Lambda}$ is
+    identified only up to a sign flip --- resolved in post-processing.
+
+  \end{itemize}
+
+  \vspace{0.5em}
+
+  \begin{block}{Why it matters}
+    Unresolved non-identifiability causes MCMC chains to be multimodal
+    and essentially useless.  The paper deliberately \emph{exploits} the
+    non-identifiability as a computational tool (see ASIS, Section 4).
+  \end{block}
+
+\end{frame}
+
+%==== 03 - Bayesian Inference =================================================%
+
+\section{Bayesian Inference}
+
+%%% Slide 03A - Gibbs Sampler %%%
+\begin{frame}{Bayesian Inference: Gibbs Sampler}
+
+  \textbf{Data augmentation} with latent volatilities $\mathbf{h}$ and factors
+  $\mathbf{f}$ makes conditional posteriors tractable --- exactly as in the
+  $t$-model from Task 2.
+
+  \vspace{0.5em}
+
+  \begin{alertblock}{Algorithm 1 -- Standard Gibbs Sampler}
+    \begin{enumerate}
+      \setlength\itemsep{0.5em}
+      \item[\textbf{(a)}] \textbf{Univariate SV updates} ($m + r$ independent
+            problems): given $\mathbf{f}$ and $\boldsymbol{\Lambda}$, each
+            series/factor reduces to a univariate SV model via the
+            log-squared observation trick.  Use the \texttt{stochvol} R
+            package as a plug-in.
+      \item[\textbf{(b)}] \textbf{Sample loadings} $\boldsymbol{\Lambda}$:
+            conditional on $\mathbf{f}$ and $\mathbf{h}$, each row of
+            $\boldsymbol{\Lambda}$ is a standard normal regression posterior.
+      \item[\textbf{(c)}] \textbf{Sample factors} $\mathbf{f}_t$: conditional
+            on $\boldsymbol{\Lambda}$ and $\mathbf{h}$, each $\mathbf{f}_t$
+            is a multivariate normal posterior.
+    \end{enumerate}
+  \end{alertblock}
+
+  \vspace{0.4em}
+
+  \textbf{Link to lecture (Week 2--3):} Steps (b) and (c) are identical in
+  structure to the conjugate Normal--Normal updates for $\mu$ and the
+  $\omega_i$ in Task 2.  Step (a) extends the MH step for $\nu$.
+
+\end{frame}
+
+%%% Slide 03B - Why Standard Gibbs Fails %%%
+\begin{frame}{Problem: Standard Gibbs Mixes Poorly}
+
+  \begin{itemize}
+    \setlength\itemsep{0.9em}
+
+    \item The factor loadings $\boldsymbol{\Lambda}$ and the latent factors
+    $\mathbf{f}_t$ are \textbf{strongly correlated} in their joint posterior.
+    Updating them sequentially leaves the chain nearly stuck.
+
+    \item In simulation studies with $m=10$, $r=2$, $T=1000$: the standard
+    sampler yields \textbf{inefficiency factors (IFs) of 5000+} for some
+    datasets --- meaning you need 5000 MCMC draws to equal one independent
+    draw.
+
+    \item Even after 5 million iterations the chain may not have converged.
+
+  \end{itemize}
+
+  \vspace{0.3em}
+
+  \begin{block}{Inefficiency Factor (IF)}
+    Ratio of the MCMC numerical variance to the variance from i.i.d.\ draws.
+    An IF of $k$ means you need $k$ times as many MCMC draws to achieve the
+    same accuracy as independent sampling.  Estimated via integrated
+    autocorrelation time (\texttt{coda} package).
+  \end{block}
+
+\end{frame}
+
+%==== 04 - ASIS ==============================================================%
+
+\section{The ASIS Innovation}
+\begin{frame}{Ancillarity-Sufficiency Interweaving Strategy (ASIS)}
+
+  \textbf{Key idea:} Two \emph{mathematically equivalent} parameterisations
+  are each efficient in different regions of the parameter space.
+  Switching between them at every iteration combines the best of both worlds
+  \citep{Yu2011}.
+
+  \vspace{0.5em}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Shallow Interweaving}
+        \begin{itemize}
+          \item Transform to alternative param.\ where $\lambda_{jj} = 1$
+          \item Resample $\lambda_{jj}$ from a \textbf{Generalised Inverse
+                Gaussian} (GIG) posterior (conjugate)
+          \item Transform back
+          \item Affects $\boldsymbol{\Lambda}$ and $\mathbf{f}$ only
+          \item $\approx 2$--$8\times$ efficiency gain
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Deep Interweaving}
+        \begin{itemize}
+          \item Additionally shift log-volatility path: $h^*_{m+j,t} =
+                h_{m+j,t} + 2\log|\lambda_{jj}|$
+          \item Resample $\lambda_{jj}$ via
+                \textbf{independence MH} in this extended space
+          \item Affects $\boldsymbol{\Lambda}$, $\mathbf{f}$ \emph{and}
+                $\mathbf{h}$
+          \item Up to $\mathbf{400\times}$ efficiency gain
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.5em}
+
+  \textbf{No tuning required:} The method is fully automatic --- no user
+  adjustment of proposal variances (contrast with the $c_\nu$ tuning in
+  Task 2).
+
+\end{frame}
+
+%==== 05 - Simulation =========================================================%
+
+\section{Simulation Evidence}
+\begin{frame}{Simulation Evidence}
+
+  Setup: $m=10$ series, $r=2$ factors, $T=1000$ observations, 100 replications,
+  5.1 million draws per run.
+
+  \vspace{0.5em}
+
+  \begin{table}[!h]
+    \centering
+    \fontsize{8pt}{10pt}\selectfont
+    \begin{tabular}{lrrr}
+      \toprule
+      & \textbf{No interweaving} & \textbf{Shallow} & \textbf{Deep} \\
+      \midrule
+      \cellcolor{gray!10}{$\lambda_{11}$ (average IF)}
+        & \cellcolor{gray!10}{$>1000$} & \cellcolor{gray!10}{$\approx 200$}
+        & \cellcolor{gray!10}{$\approx 5$} \\
+      Median IF across $\boldsymbol{\Lambda}$ & $\sim$400--5000 & $\sim$50--400 & $\sim$3--20 \\
+      \cellcolor{gray!10}{Efficiency gain vs.\ no interweaving}
+        & \cellcolor{gray!10}{---} & \cellcolor{gray!10}{$2$--$8\times$}
+        & \cellcolor{gray!10}{up to $\mathbf{400\times}$} \\
+      Factor $f_{1,T}$ (IF) & high & moderate & low \\
+      \cellcolor{gray!10}{Factor log-var $h_{m+1,T}$ (IF)}
+        & \cellcolor{gray!10}{high} & \cellcolor{gray!10}{high}
+        & \cellcolor{gray!10}{substantially reduced} \\
+      \bottomrule
+      \multicolumn{4}{l}{\scriptsize Source: Tables 1--2 of \citet{Kastner2017}.
+      IFs estimated via \texttt{coda}.}
+    \end{tabular}
+    \captionsetup{font=tiny}
+    \caption{Average inefficiency factors for the factor loadings matrix.}
+  \end{table}
+
+  \vspace{0.3em}
+
+  \begin{itemize}
+    \item Deep interweaving trace plots show \textbf{immediate mixing}; the
+    standard sampler barely moves even after millions of draws (Figure 1 of
+    the paper).
+    \item Log predictive Bayes factors (cf.\ Week 3) correctly identify $r=2$
+    as the true number of factors.
+  \end{itemize}
+
+\end{frame}
+
+%==== 06 - Application ========================================================%
+
+\section{Exchange Rate Application}
+\begin{frame}{Application: 26 EUR Exchange Rates (2005--2015)}
+
+  \begin{itemize}
+    \setlength\itemsep{0.7em}
+
+    \item \textbf{Data:} $m=26$ daily EUR exchange rates, $T=2649$ log-returns
+    (demeaned).  Includes outlier episodes: CHF spike Jan.\ 2015, RUB
+    collapse Dec.\ 2014.
+
+    \item \textbf{Model choice:} $r=4$ factors selected via log predictive
+    Bayes factors (Week 3, slide 8).  500\,000 post-burn-in draws.
+
+    \item \textbf{Interpretable factors:}
+    \begin{itemize}
+      \item \textbf{Factor 1:} USD/CNY-driven global dollar factor
+      (USD, CNY, HKD load highly)
+      \item \textbf{Factor 2:} Eastern European / EM currencies
+      (ZAR, HUF, PLN, TRY; JPY loads \emph{negatively})
+      \item \textbf{Factor 3:} Commodity currencies (AUD, NZD, CAD, ZAR)
+      \item \textbf{Factor 4:} Tiger Cub economies (MYR, KRW, PHP, SGD)
+    \end{itemize}
+
+    \item \textbf{Time-varying correlations:} CNY and HKD nearly perfectly
+    correlated with USD throughout; RUB--USD correlation fell from $\approx
+    0.9$ to $\approx 0.4$ during 2008--2009.
+
+    \item \textbf{Robustness:} Idiosyncratic SV components absorb outliers
+    (CHF, RUB) without distorting the factor structure --- analogous to how
+    $\omega_i$ absorbed outliers in Task 2.
+
+  \end{itemize}
+
+\end{frame}
+
+%==== 07 - Takeaways ==========================================================%
+
+\section{Takeaways \& Practical Relevance}
+\begin{frame}{Takeaways \& Practical Relevance}
+
+  \textbf{Theoretical connections to the lecture:}
+
+  \begin{itemize}
+    \setlength\itemsep{0.6em}
+
+    \item \textbf{Data augmentation (Week 2--3):} The factor SV Gibbs sampler
+    is a direct generalisation of the $\omega_i$-augmented sampler in Task 2.
+    Both make conditionally intractable models tractable.
+
+    \item \textbf{Model selection (Week 3):} Log predictive Bayes factors
+    (Kass--Raftery scale) are used to select $r$ --- identical framework to
+    the marginal likelihood comparisons in the lecture.
+
+    \item \textbf{Shrinkage (Week 3):} The Gaussian prior on $\boldsymbol{\Lambda}$
+    acts as a Ridge penalty, regularising small loadings and preventing
+    spurious factors.
+
+  \end{itemize}
+
+  \vspace{0.5em}
+
+  \textbf{Practical use:}
+
+  \begin{itemize}
+    \setlength\itemsep{0.4em}
+    \item The \texttt{factorstochvol} R package implements the full algorithm.
+    \item Deep interweaving adds negligible computational cost but yields
+    orders-of-magnitude better mixing --- always prefer it.
+    \item Even a correctly specified Gibbs sampler can be
+    \textbf{practically useless} without good mixing.  ASIS is a general
+    remedy applicable beyond this specific model.
+  \end{itemize}
+
+\end{frame}
+
+%==== 08 - Bibliography =======================================================%
+
+\section*{Bibliography}
+\begin{frame}{Bibliography}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{frame}
+
+%==== END =====================================================================%
+
+\end{document}
