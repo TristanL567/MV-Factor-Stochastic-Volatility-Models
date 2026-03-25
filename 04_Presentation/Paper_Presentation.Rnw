@@ -262,7 +262,7 @@ knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Presentation.tex"))
 
 \begin{frame}{Building Block 4: The Standard Gibbs Sampler}
 
-  Iterate the following three steps \citep[Algorithm~1]{Kastner2017}:
+  Iterate the following three steps (Kastner et al. 2017, Algorithm 1):
 
   \vspace{0.3em}
 
@@ -334,7 +334,7 @@ knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Presentation.tex"))
 
 \begin{frame}{The ASIS Key Idea}
 
-  \textbf{Core insight \citep{Yu2011}:} Two \emph{mathematically equivalent}
+  \textbf{Core insight (Yu and Meng 2011)}: Two \emph{mathematically equivalent}
   parameterisations are often each efficient in \emph{different} regions of
   the param. space.  \textbf{Switching between them at every iteration}
   combines the best of both worlds.
@@ -594,23 +594,22 @@ knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Presentation.tex"))
 
 \end{frame}
 
-%==== 12 - Bibliography =======================================================%
-
-\section*{Bibliography}
-\begin{frame}{Bibliography}
-  \bibliographystyle{plainnat}
-  \bibliography{references}
-\end{frame}
-
 %==== APPENDIX ================================================================%
 
 \appendix
 
-\begin{frame}
-  \begin{center}
-    \Large\textbf{Appendix}\\[0.5em]
-    \normalsize Derivations \& Extensions
-  \end{center}
+\begin{frame}{Bibliography}
+  \begin{itemize}
+    \setlength\itemsep{1em}
+    \item Kastner, G., Fr\"{u}hwirth-Schnatter, S., \& Lopes, H.F. (2017).
+          Efficient Bayesian inference for multivariate factor stochastic
+          volatility models. \textit{Journal of Computational and Graphical
+          Statistics}, 26(4), 905--917.
+    \item Yu, Y., \& Meng, X.-L. (2011). To center or not to center:
+          An ancillarity-sufficiency interweaving strategy (ASIS) for
+          boosting MCMC efficiency. \textit{Journal of Computational and
+          Graphical Statistics}, 20(3), 531--570.
+  \end{itemize}
 \end{frame}
 
 %==== A1 - GIG Derivation =====================================================%
@@ -693,42 +692,6 @@ knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Presentation.tex"))
     \qquad
     \boldsymbol{\Lambda}^{\mathrm{new}} = \frac{\lambda_{jj}^{\mathrm{new}}}{\lambda_{jj}^{\mathrm{old}}}\boldsymbol{\Lambda}^{\mathrm{old}}
   \]
-
-\end{frame}
-
-%==== A3 - Thesis Connection ==================================================%
-
-\begin{frame}{A3: Connection to Thesis --- Crash-Filtered Equity Index}
-
-  \textbf{Thesis goal \citep{Tewari2024}:} Predict \textbf{Catastrophic Stock
-  Implosion (CSI)} events ($>80\%$ drawdown + zombie period) and construct a
-  crash-filtered index with superior risk-adjusted returns.
-
-  \vspace{0.3em}
-
-  \textbf{Where the factor SV model fits:}
-
-  \begin{itemize}
-    \setlength\itemsep{0.6em}
-
-    \item \textbf{Feature engineering for CSI prediction:}
-    The idiosyncratic log-variance $h_{it}$ and factor log-variances
-    $h_{m+j,t}$ are natural inputs to the ensemble classifiers (RF, XGBoost).
-    A firm whose \emph{idiosyncratic} SV is elevated and detaches from the
-    common factors is a candidate for implosion --- this is precisely what
-    $U_t$ captures, separately from $\Lambda V_t \Lambda^\prime$.
-
-    \item \textbf{Dynamic covariance in the optimiser:}
-    After filtering CSI candidates, the posterior mean of $\Sigma_t$
-    replaces the sample covariance in the Markowitz step at each annual
-    rebalancing --- more stable and current than backward-looking estimates.
-
-    \item \textbf{Uncertainty-aware threshold:}
-    The posterior distribution of $\Sigma_t$ can propagate estimation
-    uncertainty into the FPR constraint, making the exclusion threshold
-    $\theta$ \emph{data-adaptive} rather than fixed.
-
-  \end{itemize}
 
 \end{frame}
 
