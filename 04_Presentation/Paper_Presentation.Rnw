@@ -64,7 +64,7 @@ knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Presentation.tex"))
 \subtitle{(Kastner et al. 2017)}
 \author{Leonid Kuzmishin \\
         Tristan Leiter}
-\institute[WU]{Vienna University of Business and Economics \\
+\institute[WU]{Vienna University of Economics and Business \\
         \medskip
         \scriptsize Bayesian Econometrics -- Summer Term 2026}
 \date{26th of March, 2026}
