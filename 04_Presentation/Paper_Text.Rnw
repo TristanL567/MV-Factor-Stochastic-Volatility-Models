@@ -1,0 +1,903 @@
+%==== KNITR ===================================================================%
+
+<<echo=FALSE, eval=FALSE>>=
+library(knitr)
+Path <- this.path::this.dir()
+setwd(Path)
+Directory_LaTeX <- file.path(Path, "Paper_Text.Rnw")
+knit2pdf(Directory_LaTeX, output = file.path(Path, "Paper_Text.tex"))
+@
+
+%==== Speaker Notes: Efficient Bayesian Inference for Factor SV Models ========%
+%
+%  Standalone LaTeX document — compile with pdflatex or xelatex.
+%  No Beamer. Plain article class, clean typography.
+%
+%==============================================================================%
+
+\documentclass[11pt, a4paper]{article}
+
+% --- PACKAGES ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{microtype}
+
+% --- PAGE GEOMETRY ---
+\geometry{
+  top    = 2.5cm,
+  bottom = 2.5cm,
+  left   = 2.8cm,
+  right  = 2.8cm
+}
+
+% --- COLOURS ---
+\definecolor{MainBlue}{RGB}{0, 72, 144}
+\definecolor{RemarkBlue}{RGB}{0, 90, 170}
+\definecolor{RemarkBG}{RGB}{232, 242, 255}
+\definecolor{FormulaGrey}{RGB}{245, 245, 245}
+\definecolor{RuleGrey}{RGB}{180, 180, 180}
+\definecolor{DarkGrey}{RGB}{80, 80, 80}
+
+% --- SECTION FORMATTING ---
+\titleformat{\section}
+  {\Large\bfseries\color{MainBlue}}
+  {\thesection.}{0.6em}{}
+  [\vspace{-0.3em}\textcolor{RuleGrey}{\rule{\linewidth}{0.6pt}}]
+
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{DarkGrey}}
+  {}{0em}{}
+
+\titlespacing{\section}{0pt}{2em}{0.8em}
+\titlespacing{\subsection}{0pt}{1em}{0.3em}
+
+% --- REMARK BOX (likely questions / points to stress) ---
+\newmdenv[
+  backgroundcolor = RemarkBG,
+  linecolor        = RemarkBlue,
+  linewidth        = 3pt,
+  leftline         = true,
+  rightline        = false,
+  topline          = false,
+  bottomline       = false,
+  innerleftmargin  = 10pt,
+  innerrightmargin = 8pt,
+  innertopmargin   = 6pt,
+  innerbottommargin= 6pt,
+  skipabove        = 8pt,
+  skipbelow        = 8pt
+]{remarkbox}
+
+% --- FORMULA BOX ---
+\newmdenv[
+  backgroundcolor = FormulaGrey,
+  linecolor        = RuleGrey,
+  linewidth        = 0.8pt,
+  innerleftmargin  = 14pt,
+  innerrightmargin = 14pt,
+  innertopmargin   = 10pt,
+  innerbottommargin= 10pt,
+  skipabove        = 8pt,
+  skipbelow        = 8pt
+]{formulabox}
+
+% --- HELPERS ---
+\newcommand{\slidetag}[1]{%
+  \noindent\textcolor{MainBlue}{\footnotesize\textbf{[SLIDE: #1]}}%
+  \vspace{0.2em}\par
+}
+
+\newcommand{\stress}[1]{\textbf{#1}}
+\newcommand{\term}[1]{\textit{#1}}
+
+% --- METADATA ---
+\title{
+  {\large\color{DarkGrey} Speaker Notes}\\[0.4em]
+  {\LARGE\bfseries\color{MainBlue}
+    Efficient Bayesian Inference for\\
+    Multivariate Factor Stochastic Volatility Models}\\[0.4em]
+  {\normalsize Kastner, Fr\"uhwirth-Schnatter \& Lopes (2017)}
+}
+\author{Leonid Kuzmishin \quad \& \quad Tristan Leiter\\
+  \small Vienna University of Business and Economics ---
+  Bayesian Econometrics, Summer Term 2026}
+\date{26th of March, 2026}
+
+%==============================================================================%
+\begin{document}
+%==============================================================================%
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{remarkbox}
+  \textbf{Running example throughout the entire talk.}
+  You manage a \textbf{global macro hedge fund} with positions in 26 currency
+  pairs.  Every morning you face one question: \textit{what is today's risk
+  landscape?}  Which currencies move together?  Where is volatility clustering?
+  Which relationships have broken down?  Use this example concretely on every
+  slide --- do not just mention it once.
+\end{remarkbox}
+
+\vspace{1em}
+\tableofcontents
+\newpage
+
+%==============================================================================%
+\section{Motivation --- From Univariate to Multivariate Stochastic Volatility}
+%==============================================================================%
+
+\slidetag{Slide 3}
+
+\subsection{The core problem in one sentence}
+
+Managing 26 currencies means tracking a $26 \times 26$ covariance matrix ---
+that is $\frac{26 \cdot 27}{2} = 351$ unique parameters, \stress{every single
+trading day}.  Estimating 351 numbers reliably from a single day's data is
+statistically hopeless.
+
+\subsection{Connecting to Task 2}
+
+In Task~2 we modelled a \stress{single} return series --- daily CHF/USD --- by
+augmenting with latent weights $\omega_i$ to handle $t_\nu$-errors.  Each
+observation got its own effective variance $\sigma^2/\omega_i$.  That was a
+univariate SV model.  The natural next step is: what if we have \textit{many}
+assets simultaneously?  We need not only time-varying variances but also
+time-varying \stress{covariances}.  The full covariance matrix has
+$\frac{m(m+1)}{2}$ free elements --- growing quadratically in $m$.
+
+\subsection{The paper's answer: a factor structure}
+
+Rather than estimating 351 numbers directly, the paper imposes a
+\stress{low-dimensional factor structure}: $r \ll m$ latent factors, each with
+its own SV process.  Think of it as a financial autoencoder --- you compress
+the 351-dimensional covariance structure into a $r$-dimensional bottleneck.
+Crucially, the bottleneck itself \textit{breathes} dynamically over time.
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Is this just PCA?''\\
+  Answer: PCA gives a \textit{static} low-rank approximation with fixed loadings.
+  Here the latent factors have \textit{time-varying volatility} --- their own
+  stochastic processes.  The covariance structure can change its shape every
+  day, not just its scale.  During the 2008 crisis, correlations spiked and
+  the global dollar factor suddenly dominated everything --- a static PCA
+  cannot capture that.
+\end{remarkbox}
+
+%==============================================================================%
+\section{The Factor SV Model}
+%==============================================================================%
+
+\slidetag{Slide 4}
+
+\subsection{Observation equation}
+
+The model decomposes $m$-dimensional returns as:
+
+\begin{formulabox}
+\[
+  \underbrace{\mathbf{y}_t}_{m \times 1}
+  \;=\;
+  \underbrace{\boldsymbol{\Lambda}}_{m \times r}
+  \underbrace{\mathbf{f}_t}_{r \times 1}
+  \;+\;
+  \underbrace{\boldsymbol{\varepsilon}_t}_{m \times 1},
+  \qquad
+  \mathbf{f}_t \mid \mathbf{h}_t \sim \mathcal{N}_r(\mathbf{0},\, V_t),
+  \qquad
+  \boldsymbol{\varepsilon}_t \mid \mathbf{h}_t \sim \mathcal{N}_m(\mathbf{0},\, U_t)
+\]
+\end{formulabox}
+
+Three economic building blocks:
+
+\paragraph{$\boldsymbol{\Lambda}$ --- the loading matrix.}
+Each row is one currency's \term{sensitivity profile}.  AUD has a high loading
+on the commodity factor.  JPY loads \textit{negatively} on the risk-sentiment
+factor --- it appreciates when other currencies fall.  EUR loads on the global
+dollar factor.  These loadings are unknown and must be inferred from data.
+
+\paragraph{$\mathbf{f}_t$ --- the latent factors.}
+These are the \stress{unobserved global forces} driving the system.  Unlike
+Fama--French, you cannot look them up --- they are inferred from the data.
+Each factor has its own stochastic volatility process, its own ``currency
+VIX'', evolving as an AR(1) in log-variance space.
+
+\paragraph{$\boldsymbol{\varepsilon}_t$ --- idiosyncratic shocks.}
+What remains after removing factor contributions.  The CHF spike of January
+2015 --- when the Swiss National Bank suddenly unpegged from the EUR --- is a
+perfect illustration.  No global factor caused that move.  It is absorbed
+entirely into the idiosyncratic SV of CHF, leaving the factor structure
+undistorted.
+
+\subsection{The log-volatility state vector $\mathbf{h}_t$}
+
+$\mathbf{h}_t$ collects \stress{all $m + r$ log-variances} at time $t$:
+\begin{itemize}[itemsep=2pt]
+  \item $h_{1t}, \ldots, h_{mt}$: log-variances of the idiosyncratic shocks
+        for each of the $m$ currencies.
+  \item $h_{m+1,t}, \ldots, h_{m+r,t}$: log-variances of each of the $r$
+        factors.
+\end{itemize}
+
+Taking the \textit{log} keeps variances positive without imposing any
+constraints.  Each component evolves as an independent AR(1):
+
+\begin{formulabox}
+\[
+  h_{it} \;=\; \mu_i \;+\; \phi_i\bigl(h_{i,t-1} - \mu_i\bigr)
+           \;+\; \sigma_i\, \eta_{it},
+  \qquad \eta_{it} \overset{\mathrm{iid}}{\sim} \mathcal{N}(0,1)
+\]
+\end{formulabox}
+
+$\mu_i$ is the long-run mean of the log-variance (i.e.\ the typical volatility
+level), $\phi_i \in (-1,1)$ controls persistence (how quickly volatility
+mean-reverts), and $\sigma_i$ is the vol-of-vol.
+
+\subsection{The time-varying covariance matrix}
+
+Given $\mathbf{h}_t$, the covariance matrix of returns is:
+
+\begin{formulabox}
+\[
+  \mathrm{cov}(\mathbf{y}_t \mid \mathbf{h}_t)
+  \;=\;
+  \boldsymbol{\Lambda}\, V_t\, \boldsymbol{\Lambda}^\prime
+  \;+\; U_t
+\]
+where $U_t = \mathrm{diag}(e^{h_{1t}},\ldots,e^{h_{mt}})$ and
+$V_t = \mathrm{diag}(e^{h_{m+1,t}},\ldots,e^{h_{m+r,t}})$.
+\end{formulabox}
+
+When the global dollar factor's log-variance $h_{m+1,t}$ is large, $V_t$
+blows up, $\boldsymbol{\Lambda} V_t \boldsymbol{\Lambda}^\prime$ blows up,
+and \textit{all} pairwise correlations driven by that factor spike
+simultaneously.  This is exactly the empirical phenomenon of
+\stress{correlation breakdown during crises} that killed many pre-2008 risk
+models.
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Why are the factors uncorrelated?''\\
+  $V_t$ is \textit{diagonal} --- the factors are independent of each other
+  \textit{conditional on} $\mathbf{h}_t$.  All cross-asset dependence is
+  captured through the shared loading matrix $\boldsymbol{\Lambda}$, not
+  through correlation between the factors themselves.  This is the classical
+  factor model assumption and is what makes the Gibbs sampler tractable.
+\end{remarkbox}
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``What is the difference between $U_t$ and $V_t$?''\\
+  $U_t$ captures volatility that is \textit{specific} to one currency ---
+  the CHF blow-up affected only CHF.  $V_t$ captures volatility that is
+  \textit{common} --- a spike in the global dollar factor simultaneously
+  moves all dollar-correlated currencies.  The additive decomposition
+  $\boldsymbol{\Lambda} V_t \boldsymbol{\Lambda}^\prime + U_t$ separates these
+  two channels cleanly.
+\end{remarkbox}
+
+%==============================================================================%
+\section{Identification}
+%==============================================================================%
+
+\slidetag{Slide 5}
+
+\subsection{The scaling ambiguity}
+
+The factor model has a fundamental identification problem.  For any scalar
+$c \neq 0$:
+
+\begin{formulabox}
+\[
+  \boldsymbol{\Lambda}\, \mathbf{f}_t
+  \;=\;
+  \underbrace{(c\,\boldsymbol{\Lambda})}_{\boldsymbol{\Lambda}^*}
+  \underbrace{(c^{-1}\mathbf{f}_t)}_{\mathbf{f}_t^*}
+\]
+\end{formulabox}
+
+The data observes only the product $\boldsymbol{\Lambda}\mathbf{f}_t$.  It
+cannot distinguish a loading of 2 with a factor of 1 from a loading of 1 with
+a factor of 2.  The posterior has a \stress{continuous ridge of equally valid
+solutions} --- MCMC will wander along this ridge indefinitely without
+additional constraints.
+
+\subsection{The classical fix and its problem}
+
+The classical approach pins $\lambda_{jj} = 1$ for each factor --- forcing,
+say, EUR/USD to be the ``leader'' of factor~1, GBP/USD the leader of
+factor~2, and so on.  This works mechanically but is \stress{economically
+arbitrary}.  Why should EUR/USD be privileged over GBP/USD?  The ordering
+imposes a hierarchy the data did not ask for.
+
+\subsection{The paper's approach}
+
+Instead of constraining $\boldsymbol{\Lambda}$, the paper constrains the
+\stress{long-run mean of each factor's SV process} by fixing:
+\[
+  \mu_{m+j} = 0
+  \qquad \Longrightarrow \qquad
+  \mathbb{E}\bigl[e^{h_{m+j,t}}\bigr] \approx 1.
+\]
+The factor's variance is anchored to 1 \textit{on average over time}.  It
+can still be high during crises and low during calm periods --- the stochastic
+volatility is alive --- but it cannot drift to an arbitrary permanent scale.
+Crucially, $\lambda_{jj}$ is left \textit{unrestricted}.
+
+\begin{remarkbox}
+  \textbf{Why this matters for MCMC.}
+  Unresolved non-identifiability creates a multimodal posterior --- MCMC
+  chains get stuck between modes.  But the paper's approach leaves a
+  \textit{residual} sign ambiguity in $\lambda_{jj}$ (positive or negative)
+  which becomes a \stress{computational tool}: the ASIS algorithm will exploit
+  this freedom to make much larger jumps in parameter space.  Stress this
+  connection to Slides~9--10.
+\end{remarkbox}
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Doesn't fixing $\mu_{m+j}=0$ lose information?''\\
+  No.  It only fixes the \textit{scale} of the factor --- the information
+  about scale is simply redistributed into $\lambda_{jj}$.  The model is
+  observationally equivalent to the classical fix; it is a different choice
+  of where to absorb the scaling ambiguity.
+\end{remarkbox}
+
+%==============================================================================%
+\section{Bayesian Inference --- Priors \& Data Augmentation}
+%==============================================================================%
+
+\slidetag{Slide 6}
+
+\subsection{Priors --- encoding what we know before seeing data}
+
+Priors are not merely ``starting points'' for the algorithm.  They encode
+\stress{beliefs about plausible parameter values before observing any data},
+and they influence the entire posterior.  A useful metaphor: the prior is a
+gravitational field pulling the sampler toward plausible regions; the
+likelihood is another force pulling toward regions that fit the data; the
+posterior is the equilibrium.
+
+The priors are set independently for each SV process $i = 1, \ldots, m+r$:
+
+\begin{formulabox}
+\[
+  \mu_i \sim \mathcal{N}(b_\mu,\, B_\mu),
+  \qquad
+  \frac{\phi_i + 1}{2} \sim \mathcal{B}(a_0,\, b_0),
+  \qquad
+  \sigma_i^2 \sim B_\sigma \cdot \chi^2_1
+\]
+\end{formulabox}
+
+\paragraph{$\mu_i \sim \mathcal{N}(b_\mu, B_\mu)$ --- long-run log-variance level.}
+$\mu_i$ lives on the whole real line (log-variance is unrestricted), so a
+Normal prior is natural and conjugate.  For daily currency returns, typical
+annualised volatility is around 8--15\%, so daily variance is roughly
+$(0.10)^2 / 252 \approx 4 \times 10^{-5}$, giving $\mu_i \approx \log(4 \times
+10^{-5}) \approx -10$.  The hyperparameters $b_\mu$ and $B_\mu$ encode your
+prior guess at the typical volatility level and your uncertainty about that
+guess.
+
+\paragraph{$({\phi_i + 1})/{2} \sim \mathcal{B}(a_0, b_0)$ --- persistence.}
+$\phi_i \in (-1, 1)$ is the AR(1) persistence coefficient.  The
+\stress{reparameterisation trick}: adding 1 and dividing by 2 maps $(-1,1)$
+onto $(0,1)$, where the Beta distribution is defined.  This enforces
+stationarity automatically --- no truncation needed.
+
+The Beta distribution is extremely flexible.  The key insight is that
+\stress{$\mathcal{B}(a_0, b_0)$ with $a_0 \gg b_0$ puts most mass near 1},
+encoding the empirical fact of \term{volatility clustering}: the VIX stays
+elevated for months after a crisis, it does not reset overnight.  You are not
+forcing persistence --- you are expressing a well-founded prior belief while
+remaining open to the data overriding it.  The default in the
+\texttt{stochvol} package is $\mathcal{B}(5, 1.5)$.
+
+\paragraph{$\sigma_i^2 \sim B_\sigma \cdot \chi^2_1$ --- vol-of-vol.}
+$\sigma_i$ controls how wildly log-volatility itself fluctuates.  The
+$\chi^2_1$ distribution is simply the distribution of $Z^2$ for
+$Z \sim \mathcal{N}(0,1)$ --- it puts most mass near zero and has a long right
+tail.  This reflects the belief that log-volatility usually drifts smoothly
+(small $\sigma_i$) but can occasionally jump (heavy tail).  The scaling
+constant $B_\sigma$ sets the overall plausible magnitude.
+
+\paragraph{$\lambda_{ij} \sim \mathcal{N}(0, B_\lambda)$ --- factor loadings.}
+Ridge-type shrinkage.  Most currencies probably do not load heavily on most
+factors.  The Gaussian prior centred at zero pulls weak loadings toward zero
+unless the data insists otherwise.  Bayesian Ridge regression, expressed in
+prior form.
+
+\subsection{Data augmentation --- the computational trick}
+
+Treat the log-volatility paths $\mathbf{h} = \{h_{i,\bullet}\}$ and the
+factor paths $\mathbf{f} = \{\mathbf{f}_t\}$ as \stress{missing data}.  This
+breaks the intractable joint estimation problem into two simple conditional
+pieces:
+
+\begin{itemize}[itemsep=4pt]
+  \item \textbf{Conditional on $\mathbf{f}$ and $\boldsymbol{\Lambda}$:}
+        Each of the $m+r$ residual series is an independent univariate SV
+        model $\Rightarrow$ hand to \texttt{stochvol}.
+  \item \textbf{Conditional on $\mathbf{h}$:}
+        $\boldsymbol{\Lambda}$ and $\mathbf{f}_t$ have closed-form Normal
+        posteriors $\Rightarrow$ standard weighted regression updates.
+\end{itemize}
+
+\begin{remarkbox}
+  \textbf{Direct parallel to Task~2.}  Augmenting with $\omega_i$ turned an
+  intractable $t$-likelihood into a conditionally Normal--Gamma system.
+  Exactly the same philosophy: introduce a latent variable that makes the
+  conditional distributions tractable, then alternate between sampling the
+  latent variable and the parameters.  This is the Gibbs sampler in its
+  purest form.
+\end{remarkbox}
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Why not just integrate out $\mathbf{f}$ and
+  $\mathbf{h}$ analytically?''\\
+  Because the SV log-variance equation is nonlinear --- the
+  $e^{h_{it}}$ terms make direct marginalisation intractable.  Data
+  augmentation sidesteps this by conditioning on the nonlinear terms,
+  turning everything into linear Gaussian problems.
+\end{remarkbox}
+
+%==============================================================================%
+\section{The Standard Gibbs Sampler}
+%==============================================================================%
+
+\slidetag{Slide 7}
+
+\subsection{The Gibbs principle}
+
+Even when the joint posterior $p(\boldsymbol{\Lambda}, \mathbf{f}, \mathbf{h}
+\mid \mathbf{y})$ is intractable, the \stress{conditional} posteriors are
+simple.  The Gibbs sampler alternates: fix everything except one block, sample
+that block from its conditional, move to the next block, repeat.  Each new
+draw depends only on the current state --- not on the full history.  This is
+the Markov chain property.  Over many iterations the chain converges to the
+true joint posterior as its stationary distribution.
+
+\subsection{Step (a) --- Univariate SV updates ($m + r$ independent problems)}
+
+Conditional on $\mathbf{f}$ and $\boldsymbol{\Lambda}$, subtract the factor
+component from each currency's returns:
+\[
+  \tilde{y}_{it} \;=\; y_{it} - (\boldsymbol{\Lambda}\mathbf{f}_t)_i.
+\]
+What remains is a pure idiosyncratic SV series for currency $i$.  Similarly,
+each factor series $f_{jt}$ is driven purely by its own SV process.  You now
+have $m + r$ independent univariate SV problems.  Update
+$(h_{i,\bullet},\, \mu_i,\, \phi_i,\, \sigma_i)$ for each via
+\texttt{stochvol} using the log-squared observation trick.
+
+\textbf{Why ``stochastic''?}  Log-volatility $h_{it}$ is a \textit{latent
+random variable} with an independent shock $\eta_{it}$ hitting it each
+period.  It is not a deterministic function of past returns (as in GARCH).
+Volatility is genuinely unobserved and randomly evolving --- hence stochastic
+volatility.
+
+\textbf{Finance illustration.}  After removing the global dollar factor's
+contribution from EUR/USD returns, the residual is a univariate SV series
+with its own persistence, long-run level, and vol-of-vol.  The SNB unpegging
+in January 2015 appears as a massive spike in CHF's idiosyncratic
+log-variance --- visible only in that series, not in the factor volatilities.
+
+\subsection{Step (b) --- Sample loadings $\boldsymbol{\Lambda}$}
+
+Conditional on $\mathbf{f}$ and $\mathbf{h}$, the observation equation is a
+\stress{weighted Normal linear regression} for each row of
+$\boldsymbol{\Lambda}$:
+\[
+  y_{it} = \boldsymbol{\lambda}_i^\prime \mathbf{f}_t + \varepsilon_{it},
+  \qquad
+  \varepsilon_{it} \sim \mathcal{N}(0,\, e^{h_{it}}).
+\]
+Each observation $t$ is weighted by $e^{-h_{it}}$ --- calm periods
+(low variance) get upweighted, crisis periods (high variance) get
+downweighted.  The posterior for each row is a multivariate Normal with a
+closed-form expression.  $m$ independent regression problems, each with $T$
+observations.
+
+\textbf{Finance illustration.}  EUR/USD's loading on the dollar factor is
+estimated most reliably from quiet trading days, not from crisis spikes when
+idiosyncratic noise dominates.  The weighting scheme implements this
+automatically.
+
+\subsection{Step (c) --- Sample factors $\mathbf{f}_t$}
+
+Conditional on $\boldsymbol{\Lambda}$ and $\mathbf{h}$, each $\mathbf{f}_t$
+has a \stress{multivariate Normal posterior} --- $T$ independent
+$r$-dimensional updates.  Given that EUR/USD loads 0.8 on the dollar factor,
+today's EUR/USD return pins down what the dollar factor probably was today.
+
+\subsection{The punchline}
+
+\begin{remarkbox}
+  \textbf{``In principle correct --- in practice broken.''}
+  The sampler is theoretically valid and will eventually converge to the
+  correct posterior.  But the strong posterior correlation between
+  $\boldsymbol{\Lambda}$ and $\mathbf{f}_t$ means the chain moves so slowly
+  that ``eventually'' requires millions of iterations beyond what is
+  computationally feasible.  This is the crisis Slide~8 documents.
+\end{remarkbox}
+
+%==============================================================================%
+\section{The Problem: Standard Gibbs Mixes Poorly}
+%==============================================================================%
+
+\slidetag{Slide 8}
+
+\subsection{The diagnostic: Inefficiency Factor (IF)}
+
+\begin{formulabox}
+  $\mathrm{IF} = k$ means you need $k$ correlated MCMC draws to match
+  the statistical accuracy of \textit{one} independent draw.\\[4pt]
+  $\mathrm{IF} = 5000$ with $M = 100{,}000$ draws
+  $\;\Rightarrow\;$ effective sample size $= 20$.
+  Practically useless.
+\end{formulabox}
+
+\textbf{Finance analogy.}  Estimating the average daily return of a strategy
+by sampling five consecutive crisis days that all look alike.  Those five
+observations contain far less information than five draws from genuinely
+different market regimes.  IF quantifies exactly this redundancy.
+
+\subsection{The root cause: a geometric problem}
+
+$\boldsymbol{\Lambda}$ and $\mathbf{f}_t$ lie on a \stress{narrow posterior
+ridge}.  Large $\lambda_{jj}$ requires small $f_{jt}$ to keep
+$\boldsymbol{\Lambda}\mathbf{f}_t$ constant --- and vice versa.  Sequential
+Gibbs updates cannot break this dependency: every update of $\lambda_{jj}$ is
+immediately compensated by the next update of $f_{jt}$.  The chain
+inch-worms along the ridge, barely moving.
+
+\textbf{Finance illustration.}  You are trying to separately estimate ``how
+strong was the dollar trend today'' and ``how sensitive is EUR/USD to the
+dollar trend''.  These lie on a ridge of observational equivalence.  The
+sampler shuffles endlessly: strong trend with moderate sensitivity, moderate
+trend with strong sensitivity.  It never settles.
+
+\subsection{The simulation evidence}
+
+Setup: $m = 10$, $r = 2$, $T = 1000$, 100 datasets, 5.1 million iterations
+each.
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & \textbf{Avg.\ IF for $\lambda_{11}$}
+  & \textbf{Eff.\ sample size (from 100k draws)} \\
+  \midrule
+  No interweaving & $> 1000$ & $< 100$ \\
+  Shallow ASIS    & $\approx 200$ & $\approx 500$ \\
+  Deep ASIS       & $\approx 5$   & $\approx 20{,}000$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The most troubling aspect is not the average --- it is the \stress{variance
+across datasets}.  IFs range from 100 to over 5000 across replications.  You
+cannot predict in advance how badly your sampler will perform.  The sampler
+fails worst precisely when factor structure is strongest and loadings are
+largest --- the economically most interesting cases.
+
+\begin{remarkbox}
+  \textbf{Key point to stress.}  A correct model with a poorly mixing sampler
+  is useless.  You have beautiful Bayesian theory, but if the MCMC chain never
+  explores the posterior, your credible intervals are meaningless.  This
+  motivates everything that follows.
+\end{remarkbox}
+
+%==============================================================================%
+\section{The ASIS Innovation}
+%==============================================================================%
+
+\slidetag{Slides 9 \& 10}
+
+\subsection{The core insight (Yu \& Meng 2011)}
+
+Two \stress{mathematically equivalent parameterisations} of the same model
+are often each efficient in different regions of the parameter space.
+Switching between them at every iteration combines the best of both worlds.
+No new model.  No tuning parameters.  Just a change of coordinates at each
+step.
+
+\textbf{Finance analogy.}  A portfolio analyst switches between describing
+positions in terms of individual stock weights and factor exposures.  Both
+descriptions contain identical information.  Some risk calculations are easier
+in stock space, others in factor space.  ASIS does this automatically, at
+every MCMC iteration.
+
+\subsection{The two parameterisations}
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & \textbf{Baseline} & \textbf{Alternative} \\
+  \midrule
+  Loading & $\lambda_{jj}$ \textit{free} & $\lambda^*_{jj} = 1$ fixed \\
+  Factor variance level & $\mu_{m+j} = 0$ fixed & $\mu_{m+j}$ \textit{free} \\
+  Observation eq. & $\mathbf{y}_t = \boldsymbol{\Lambda}\mathbf{f}_t + \boldsymbol{\varepsilon}_t$
+                  & $\mathbf{y}_t = \boldsymbol{\Lambda}^*\mathbf{f}_t^* + \boldsymbol{\varepsilon}_t$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The link is a simple change of variables:
+
+\begin{formulabox}
+\[
+  \mathbf{f}_t^* = \lambda_{jj}\,\mathbf{f}_t,
+  \qquad
+  \boldsymbol{\Lambda}^* = \lambda_{jj}^{-1}\,\boldsymbol{\Lambda}
+\]
+\end{formulabox}
+
+The product $\boldsymbol{\Lambda}\mathbf{f}_t = \boldsymbol{\Lambda}^*
+\mathbf{f}_t^*$ is \textit{identical}.  The model is unchanged; only the
+coordinate system differs.
+
+\textbf{Concrete illustration.}  Today the dollar factor has loading 2 on
+EUR/USD and realisation 0.5.  In the alternative parameterisation: loading 1,
+realisation 1.0.  Same EUR/USD contribution, different coordinates.
+
+\subsection{Shallow interweaving --- the first fix}
+
+\textbf{Procedure:}
+\begin{enumerate}[itemsep=3pt]
+  \item Run standard Gibbs steps (a)--(c) in the baseline parameterisation.
+  \item \textbf{Transform:} $\mathbf{f}_t^* = \lambda_{jj}\,\mathbf{f}_t$.
+  \item \textbf{Resample} $\lambda_{jj}^2$ from its conjugate posterior in
+        the alternative parameterisation.  This turns out to be a Generalised
+        Inverse Gaussian (GIG) --- closed form, no tuning (see Appendix~A1):
+        \[
+          \lambda_{jj}^2 \mid \cdot \;\sim\; \mathrm{GIG}(p,\, a,\, b)
+        \]
+  \item \textbf{Transform back:}
+        $\mathbf{f}_t = (\lambda_{jj}^{\mathrm{new}})^{-1}\,\mathbf{f}_t^*$.
+\end{enumerate}
+
+By resampling $\lambda_{jj}$ in the alternative parameterisation, where it has
+cleaner posterior geometry, the sampler makes \textbf{larger jumps} along the
+ridge.  \textbf{Gain: $\approx 2$--$8\times$.}
+
+\textbf{Why is this not enough?}  The log-volatility path $h_{m+j,\bullet}$
+is left frozen.  But the volatility path was estimated conditional on the
+\textit{old} loading scale.  After resampling $\lambda_{jj}$, the volatility
+path is internally inconsistent with the new scale.  The chain must then
+laboriously re-estimate the entire volatility path to catch up --- and the
+slow mixing between $\lambda_{jj}$ and $h_{m+j,\bullet}$ persists.
+
+\subsection{Deep interweaving --- the full fix}
+
+Deep interweaving additionally transforms the \stress{log-volatility path
+itself} when switching parameterisations.
+
+\textbf{The log-volatility shift:}
+The scaled factor $f_{jt}^* = \lambda_{jj} f_{jt}$ has variance:
+
+\begin{formulabox}
+\[
+  \mathrm{Var}(f_{jt}^*)
+  \;=\; \lambda_{jj}^2\, e^{h_{m+j,t}}
+  \;=\; \exp\!\bigl(\underbrace{\log\lambda_{jj}^2 + h_{m+j,t}}_{=:\; h^*_{m+j,t}}\bigr)
+\]
+\end{formulabox}
+
+So the transformed log-variance is:
+\[
+  h^*_{m+j,t} \;=\; h_{m+j,t} + 2\log|\lambda_{jj}|,
+\]
+and the level of the new AR(1) is $\mu_{m+j} = \log\lambda_{jj}^2$ ---
+which is now \textit{free}.  The scaling has been fully absorbed into the SV
+level.
+
+\textbf{Procedure:}
+\begin{enumerate}[itemsep=3pt]
+  \item Run standard Gibbs steps (a)--(c).
+  \item \textbf{Transform:}
+        $\mathbf{f}_t^* = \lambda_{jj}\,\mathbf{f}_t$
+        and $h^*_{m+j,t} = h_{m+j,t} + 2\log|\lambda_{jj}|$.
+  \item \textbf{Resample} $\lambda_{jj}$ via independence Metropolis--Hastings,
+        using a Gaussian approximation to the conditional likelihood.
+        No tuning required.
+  \item \textbf{Transform back:}
+        $h_{m+j,t}^{\mathrm{new}} = h^*_{m+j,t} - 2\log|\lambda_{jj}^{\mathrm{new}}|$
+        and $\boldsymbol{\Lambda}^{\mathrm{new}} =
+        \frac{\lambda_{jj}^{\mathrm{new}}}{\lambda_{jj}^{\mathrm{old}}}
+        \boldsymbol{\Lambda}^{\mathrm{old}}$.
+\end{enumerate}
+
+\textbf{Gain: up to $400\times$.}
+
+\subsection{Why deep beats shallow}
+
+Shallow breaks the $(\lambda_{jj},\, \mathbf{f}_t)$ dependency but leaves
+the $(\lambda_{jj},\, h_{m+j,\bullet})$ dependency intact.  Deep breaks
+\textbf{both} simultaneously.  After resampling $\lambda_{jj}$, the
+volatility path is immediately recalibrated to the new scale.
+
+\textbf{Finance analogy.}  Shallow interweaving is like updating your
+currency factor exposures but forgetting to recalibrate the factor volatility
+estimates.  Your VaR calculation is now internally inconsistent --- loadings
+suggest one scale, volatilities suggest another.  Deep interweaving
+recalibrates everything simultaneously, keeping the model coherent at every
+step.
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Is ASIS just a trick specific to this model?''\\
+  No.  ASIS is a general principle from Yu \& Meng (2011): whenever you have
+  two equivalent parameterisations that are each efficient in different
+  regions, switching between them at each iteration is always valid and often
+  dramatically improves mixing.  It applies broadly --- factor models, random
+  effects models, latent variable models of all kinds.
+\end{remarkbox}
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``Does the MH step in deep interweaving require
+  tuning?''\\
+  No.  The Gaussian approximation to the conditional likelihood is constructed
+  analytically by matching the mean and variance of
+  $p(h^*_{m+j,1}, \ldots, h^*_{m+j,T} \mid \mu_{m+j}, \phi, \sigma^2)$,
+  which is Gaussian in $\mu_{m+j}$.  The proposal is automatic.
+\end{remarkbox}
+
+%==============================================================================%
+\section{Simulation Evidence}
+%==============================================================================%
+
+\slidetag{Slide 11}
+
+Setup: $m = 10$, $r = 2$, $T = 1000$, 100 replications, 5.1 million draws
+each.
+
+\begin{center}
+\begin{tabular}{lrrr}
+  \toprule
+  & \textbf{No interweaving} & \textbf{Shallow} & \textbf{Deep} \\
+  \midrule
+  $\lambda_{11}$ (avg.\ IF) & $>1000$ & $\approx 200$ & $\approx 5$ \\
+  Median IF across $\boldsymbol{\Lambda}$ & $\sim$400--5000 & $\sim$50--400 & $\sim$3--20 \\
+  Efficiency gain & --- & $2$--$8\times$ & up to $\mathbf{400\times}$ \\
+  Factor $f_{1,T}$ (IF) & high & moderate & low \\
+  Factor log-var $h_{m+1,T}$ (IF) & high & high & substantially reduced \\
+  \bottomrule
+  \multicolumn{4}{l}{\footnotesize Source: Tables~1--2, Kastner et al.\ (2017).}
+\end{tabular}
+\end{center}
+
+\textbf{Key observations:}
+\begin{itemize}[itemsep=3pt]
+  \item Trace plots confirm \stress{immediate mixing} with deep ASIS --- the
+        standard sampler barely moves over the same number of iterations
+        (Figure~1 of the paper).
+  \item The standard sampler's IFs vary catastrophically (100--5000+) across
+        datasets; deep interweaving reduces this \stress{uniformly} to
+        single digits.  Reliable and predictable.
+  \item Shallow interweaving helps $\boldsymbol{\Lambda}$ and $\mathbf{f}$
+        but leaves the factor log-variance IF high --- confirming that the
+        $({\lambda_{jj}},\, {h_{m+j,\bullet}})$ dependency is the bottleneck
+        that only deep interweaving resolves.
+  \item Log predictive Bayes factors correctly recover $r = 2$ --- model
+        selection works reliably once the sampler actually mixes.
+\end{itemize}
+
+%==============================================================================%
+\section{Application: 26 EUR Exchange Rates (2005--2015)}
+%==============================================================================%
+
+\slidetag{Slide 12}
+
+\textbf{Setup:} $m = 26$ daily EUR exchange rates, $T = 2649$ log-returns,
+$r = 4$ factors selected via log predictive Bayes factors, 500{,}000
+post-burn-in draws.  Data used \textit{as-is}: includes the CHF spike
+(January~2015) and the RUB collapse (December~2014).
+
+\subsection{Four interpretable factors emerge from the data}
+
+\begin{itemize}[itemsep=4pt]
+  \item \textbf{F1 --- Global USD/CNY factor.}
+        The broad dollar trend.  Almost every currency loads on this.
+  \item \textbf{F2 --- Eastern Europe.}
+        ZAR, HUF, PLN move together; JPY loads \textit{negatively} ---
+        it appreciates in risk-off environments when EM currencies fall.
+  \item \textbf{F3 --- Commodity currencies.}
+        AUD, NZD, CAD --- driven by global commodity prices.
+  \item \textbf{F4 --- Tiger Cub economies.}
+        SGD and Asian peers.
+\end{itemize}
+
+These factors were not imposed --- they \stress{emerged from the data}
+entirely through the Bayesian inference procedure.
+
+\subsection{Key empirical findings}
+
+\begin{itemize}[itemsep=4pt]
+  \item Factor volatilities spike around the \stress{2008 crisis} and again
+        during 2014--15, capturing regime changes automatically.
+  \item CNY and HKD show near-perfect correlation with USD throughout the
+        sample --- their loadings on F1 dominate, reflecting the de-facto
+        dollar peg.
+  \item The RUB--USD correlation \stress{collapsed from $\approx 0.9$ to
+        $\approx 0.4$} during 2008--09 --- visible directly in the
+        time-varying posterior correlations.
+  \item The CHF unpegging (January 2015) and RUB collapse (December 2014)
+        are absorbed entirely by their \textit{idiosyncratic} SV components.
+        The global factor structure is not distorted by these country-specific
+        shocks.  This is the multivariate analogue of how $\omega_i$ absorbed
+        outliers in Task~2.
+\end{itemize}
+
+\begin{remarkbox}
+  \textbf{Likely question:} ``How do you choose $r = 4$?''\\
+  Via log predictive Bayes factors --- the same model selection framework
+  discussed in Week~3.  You compare the out-of-sample predictive likelihood
+  of models with $r = 1, 2, 3, 4, 5, \ldots$ and select the one with
+  highest log predictive score.  The simulation study confirms this procedure
+  correctly recovers the true $r$ when the data-generating process is known.
+\end{remarkbox}
+
+%==============================================================================%
+\section{Takeaways \& Practical Outlook}
+%==============================================================================%
+
+\slidetag{Slide 13}
+
+\subsection{Connections to the course}
+
+\begin{itemize}[itemsep=4pt]
+  \item \textbf{Data augmentation (Weeks 2--3).}  The Factor SV Gibbs
+        sampler is a direct generalisation of the $\omega_i$ augmentation
+        from Task~2.  Same philosophy: introduce latent variables to make
+        conditional distributions tractable.
+  \item \textbf{Model selection (Week 3).}  Bayes factors select $r$ ---
+        the same framework as discussed in the lecture.
+  \item \textbf{Shrinkage (Week 3).}  The Gaussian prior on
+        $\boldsymbol{\Lambda}$ acts as a Ridge penalty, preventing overfitting
+        in high dimensions.
+  \item \textbf{Key lesson.}  A correct model with a poorly mixing sampler
+        is useless.  ASIS is a general remedy that applies far beyond this
+        specific model.
+\end{itemize}
+
+\subsection{Three practical applications for the hedge fund}
+
+\paragraph{Portfolio optimisation.}
+Replace the backward-looking sample covariance with the posterior mean of
+$\boldsymbol{\Sigma}_t$ at each annual rebalancing.  Integrate out estimation
+uncertainty via posterior draws.  The result: more stable Markowitz weights
+that do not flip sign between rebalancings, and a covariance estimate that
+is genuinely current rather than a historical average.
+
+\paragraph{Risk management.}
+The full predictive distribution of $\mathbf{y}_{T+1}$ delivers exact
+Bayesian Value-at-Risk and Expected Shortfall without Gaussian assumptions ---
+capturing the fat tails and volatility clustering that standard models miss.
+
+\paragraph{Correlation trading.}
+Time-varying posterior correlations with full uncertainty bands signal
+\textit{exactly when} stable relationships --- like the RUB--USD co-movement
+before 2008 --- are breaking down.  You see the structural change as it
+happens, not six months after the fact.
+
+\begin{remarkbox}
+  \textbf{Closing remark.}
+  The R package \texttt{factorstochvol} (Hosszejni \& Kastner) implements
+  everything discussed in this talk, including ASIS, in efficient C++.
+  It is production-ready and available on CRAN.  For anyone wanting to apply
+  this to real portfolio problems, this is the direct starting point.
+\end{remarkbox}
+
+%==============================================================================%
+\end{document}
+%==============================================================================%
