@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pdftotext \"C:\\\\Users\\\\Tristan Leiter\\\\Documents\\\\MV-Factor-Stochastic-Volatility-Models\\\\05_Paper\\\\Efficient Bayesian Inference for Multivariate Factor Stochastic Volatility Models.pdf\" -)",
+      "Bash(ls -lh \"C:\\\\Users\\\\Tristan Leiter\\\\Documents\\\\MV-Factor-Stochastic-Volatility-Models/04_Presentation/\"*.Rnw)"
+    ]
+  }
+}
